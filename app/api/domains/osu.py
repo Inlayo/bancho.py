@@ -51,6 +51,7 @@ from app.constants.mods import Mods
 from app.constants.privileges import Privileges
 from app.logging import Ansi
 from app.logging import log
+from app.logging import printc
 from app.objects import models
 from app.objects.beatmap import Beatmap
 from app.objects.beatmap import RankedStatus
@@ -454,19 +455,15 @@ async def osuSearchSetHandler(
     player: Player = Depends(authenticate_player_session(Query, "u", "h")),
     map_set_id: int | None = Query(None, alias="s"),
     map_id: int | None = Query(None, alias="b"),
-    checksum: str | None = Query(None, alias="c"),
 ) -> Response:
     # Since we only need set-specific data, we can basically
     # just do same query with either bid or bsid.
 
-    v: int | str
     if map_set_id is not None:
         # this is just a normal request
         k, v = ("set_id", map_set_id)
     elif map_id is not None:
         k, v = ("id", map_id)
-    elif checksum is not None:
-        k, v = ("md5", checksum)
     else:
         return Response(b"")  # invalid args
 
@@ -839,7 +836,7 @@ async def osuSubmitModularSelector(
 
     # get the current stats, and take a
     # shallow copy for the response charts.
-    stats = score.player.stats[score.mode]
+    stats = score.player.gm_stats
     prev_stats = copy.copy(stats)
 
     # stuff update for all submitted scores

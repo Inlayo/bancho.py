@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
-import logging
 import re
 import struct
 import time
@@ -15,7 +13,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Literal
 from typing import TypedDict
-from zoneinfo import ZoneInfo
 
 import bcrypt
 import databases.core
@@ -40,7 +37,6 @@ from app.constants.privileges import ClanPrivileges
 from app.constants.privileges import ClientPrivileges
 from app.constants.privileges import Privileges
 from app.logging import Ansi
-from app.logging import get_timestamp
 from app.logging import log
 from app.logging import magnitude_fmt_time
 from app.objects.beatmap import Beatmap
@@ -73,7 +69,6 @@ from app.usecases.performance import ScoreParams
 OSU_API_V2_CHANGELOG_URL = "https://osu.ppy.sh/api/v2/changelog"
 
 BEATMAPS_PATH = Path.cwd() / ".data/osu"
-DISK_CHAT_LOG_FILE = ".data/logs/chat.log"
 
 BASE_DOMAIN = app.settings.DOMAIN
 
@@ -429,13 +424,7 @@ class SendMessage(BasePacket):
             t_chan.send(msg, sender=player)
 
         player.update_latest_activity_soon()
-
-        log(f"{player} @ {t_chan}: {msg}", Ansi.LCYAN)
-
-        with open(DISK_CHAT_LOG_FILE, "a+") as f:
-            f.write(
-                f"[{get_timestamp(full=True, tz=ZoneInfo('GMT'))}] {player} @ {t_chan}: {msg}\n",
-            )
+        log(f"{player} @ {t_chan}: {msg}", Ansi.LCYAN, file=".data/logs/chat.log")
 
 
 @register(ClientPackets.LOGOUT, restricted=True)
@@ -760,23 +749,12 @@ async def handle_osu_login_request(
 
     # TODO: store adapters individually
 
-    # Some disk manufacturers set constant/shared ids for their products.
-    # In these cases, there's not a whole lot we can do -- we'll allow them thru.
-    INACTIONABLE_DISK_SIGNATURE_MD5S: list[str] = [
-        hashlib.md5(b"0").hexdigest(),  # "0" is likely the most common variant
-    ]
-
-    if login_data["disk_signature_md5"] not in INACTIONABLE_DISK_SIGNATURE_MD5S:
-        disk_signature_md5 = login_data["disk_signature_md5"]
-    else:
-        disk_signature_md5 = None
-
     hw_matches = await client_hashes_repo.fetch_any_hardware_matches_for_user(
         userid=user_info["id"],
         running_under_wine=running_under_wine,
         adapters=login_data["adapters_md5"],
         uninstall_id=login_data["uninstall_md5"],
-        disk_serial=disk_signature_md5,
+        disk_serial=login_data["disk_signature_md5"],
     )
 
     if hw_matches:
@@ -1320,12 +1298,7 @@ class SendPrivateMessage(BasePacket):
                     player.send(resp_msg, sender=target)
 
         player.update_latest_activity_soon()
-
-        log(f"{player} @ {target}: {msg}", Ansi.LCYAN)
-        with open(DISK_CHAT_LOG_FILE, "a+") as f:
-            f.write(
-                f"[{get_timestamp(full=True, tz=ZoneInfo('GMT'))}] {player} @ {target}: {msg}\n",
-            )
+        log(f"{player} @ {target}: {msg}", Ansi.LCYAN, file=".data/logs/chat.log")
 
 
 @register(ClientPackets.PART_LOBBY)
@@ -1997,7 +1970,7 @@ class TourneyMatchLeaveChannel(BasePacket):
             return  # insufficient privs
 
         match = app.state.sessions.matches[self.match_id]
-        if not (match and player.id in match.tourney_clients):
+        if not match:
             return  # match not found
 
         # attempt to join match chan
