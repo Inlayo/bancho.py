@@ -3,8 +3,8 @@ services:
 
   mysql-test:
     image: mysql:latest
-    ports:
-      - ${DB_PORT}:${DB_PORT}
+    # ports:
+    #   - ${DB_PORT}:${DB_PORT}
     environment:
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASS}
@@ -25,8 +25,8 @@ services:
 
   redis-test:
     image: bitnami/redis:latest
-    ports:
-      - ${REDIS_PORT}:${REDIS_PORT}
+    # ports:
+    #   - ${REDIS_PORT}:${REDIS_PORT}
     user: root
     volumes:
       - test-redis-data:/bitnami/redis/data
@@ -50,7 +50,7 @@ services:
     init: true
     volumes:
       - .:/srv/root
-      - .test-data:/srv/root/.data
+      - test-data:/srv/root/.data
     networks:
       - test-network
     environment:
