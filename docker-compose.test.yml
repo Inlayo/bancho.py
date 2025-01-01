@@ -50,7 +50,7 @@ services:
     init: true
     volumes:
       - .:/srv/root
-      - test-data:/srv/root/.data
+      - .test-data:/srv/root/.data
     networks:
       - test-network
     environment:
