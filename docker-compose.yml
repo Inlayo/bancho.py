@@ -87,6 +87,6 @@ services:
       - DEVELOPER_MODE=${DEVELOPER_MODE}
 
 volumes:
-  data:
+  .data:
   db-data:
   redis-data:
