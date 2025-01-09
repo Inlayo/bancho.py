@@ -27,7 +27,7 @@ REDIS_USER = os.environ["REDIS_USER"]
 REDIS_PASS = quote(os.environ["REDIS_PASS"])
 REDIS_DB = int(os.environ["REDIS_DB"])
 
-REDIS_AUTH_STRING = f"{REDIS_USER}:{REDIS_PASS}@" if REDIS_USER and REDIS_PASS else ""
+REDIS_AUTH_STRING = f":{REDIS_PASS}@" if REDIS_USER and REDIS_PASS else ""
 REDIS_DSN = f"redis://{REDIS_AUTH_STRING}{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
 
 OSU_API_KEY = os.environ.get("OSU_API_KEY") or None
