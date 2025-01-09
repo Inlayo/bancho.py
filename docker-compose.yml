@@ -2,6 +2,7 @@ services:
   ## shared services
 
   mysql:
+    user: root
     image: mysql:latest
     ports:
       - ${DB_PORT}:${DB_PORT}
@@ -36,6 +37,7 @@ services:
 
   bancho:
     # we also have a public image: osuakatsuki/bancho.py:latest
+    user: root
     image: bancho:latest
     ports:
       - ${APP_PORT}:${APP_PORT}
