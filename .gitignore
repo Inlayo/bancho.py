@@ -20,3 +20,4 @@ poetry.toml
 logging.yaml
 logs.log
 .cache/
+tools/cron.py
