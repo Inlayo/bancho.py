@@ -1041,10 +1041,7 @@ async def stealth(ctx: Context) -> str | None:
 @command(Privileges.DEVELOPER)
 async def recalc(ctx: Context) -> str | None:
     """Recalculate pp for a given map, or all maps."""
-    return (
-        "Please use tools/recalc.py instead.\n"
-        "If you need any support, join our Discord @ https://discord.gg/ShEQgUx."
-    )
+    return "Please use tools/recalc.py instead."
 
 
 @command(Privileges.DEVELOPER, hidden=True)
