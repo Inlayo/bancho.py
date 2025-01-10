@@ -475,7 +475,7 @@ async def run_sql_migrations() -> None:
             log(
                 "SQL failed to update - unless you've been "
                 "modifying sql and know what caused this, "
-                "please contact @cmyui on Discord.",
+                "please contact on Discord.",
                 Ansi.LRED,
             )
             raise KeyboardInterrupt from exc
