@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import time
+from typing import List
 
 os.environ["SQLALCHEMY_SILENCE_UBER_WARNING"] = "1"
 
@@ -13,17 +14,17 @@ logging.basicConfig(
 env_file_path = "/home/ubuntu/bancho.py/.env"
 
 
-def read_env_file():
+def read_env_file() -> list[str]:
     with open(env_file_path) as file:
         return file.readlines()
 
 
-def write_env_file(lines):
+def write_env_file(lines: list[str]) -> None:
     with open(env_file_path, "w") as file:
         file.writelines(lines)
 
 
-def modify_env_variables():
+def modify_env_variables() -> None:
     lines = read_env_file()
     for i, line in enumerate(lines):
         if line.startswith("DB_HOST"):
@@ -34,7 +35,7 @@ def modify_env_variables():
     logging.info("Modified environment variables to localhost.")
 
 
-def restore_env_variables():
+def restore_env_variables() -> None:
     lines = read_env_file()
     for i, line in enumerate(lines):
         if line.startswith("DB_HOST"):
@@ -45,7 +46,7 @@ def restore_env_variables():
     logging.info("Restored environment variables to original settings.")
 
 
-def run_script():
+def run_script() -> None:
     logging.info("Starting script execution...")
 
     start_time = time.time()
