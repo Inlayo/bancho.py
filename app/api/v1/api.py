@@ -69,6 +69,31 @@ oauth2_scheme = HTTPBearer(auto_error=False)
 DATETIME_OFFSET = 0x89F7FF5F7B58000
 
 
+def format_map_basic(m: Beatmap) -> dict[str, object]:
+    return {
+        "id": m.id,
+        "md5": m.md5,
+        "set_id": m.set_id,
+        "artist": m.artist,
+        "title": m.title,
+        "version": m.version,
+        "creator": m.creator,
+        "last_update": m.last_update,
+        "total_length": m.total_length,
+        "max_combo": m.max_combo,
+        "status": m.status,
+        "plays": m.plays,
+        "passes": m.passes,
+        "mode": m.mode,
+        "bpm": m.bpm,
+        "cs": m.cs,
+        "od": m.od,
+        "ar": m.ar,
+        "hp": m.hp,
+        "diff": m.diff,
+    }
+
+
 @router.get("/calculate_pp")
 async def api_calculate_pp(
     token: HTTPCredentials = Depends(oauth2_scheme),
