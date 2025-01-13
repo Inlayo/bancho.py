@@ -207,7 +207,7 @@ async def api_get_player_count() -> Response:
             "status": "success",
             "counts": {
                 # -1 for the bot, who is always online
-                "online": len(app.state.sessions.players.unrestricted) - 1,
+                "online": len(app.state.sessions.players),
                 "total": await users_repo.fetch_count(),
             },
         },
@@ -673,10 +673,10 @@ async def api_get_map_scores(
         mods = None
 
     query = [
-        "SELECT s.map_md5, s.score, s.pp, s.acc, s.max_combo, s.mods, "
+        "SELECT s.map_md5, s.id, s.score, s.pp, s.acc, s.max_combo, s.mods, "
         "s.n300, s.n100, s.n50, s.nmiss, s.ngeki, s.nkatu, s.grade, s.status, "
         "s.mode, s.play_time, s.time_elapsed, s.userid, s.perfect, "
-        "u.name player_name, u.country player_country, "
+        "u.name player_name, u.country, "
         "c.id clan_id, c.name clan_name, c.tag clan_tag "
         "FROM scores s "
         "INNER JOIN users u ON u.id = s.userid "
