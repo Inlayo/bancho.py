@@ -2522,7 +2522,7 @@ async def process_commands(
             if res is not None:
                 # we have a message to return, include elapsed time
                 elapsed = app.logging.magnitude_fmt_time(clock_ns() - start_time)
-                return {"resp": f"{res} | Elapsed: {elapsed}", "hidden": cmd.hidden}
+                return {"resp": f"{res}", "hidden": cmd.hidden}
             else:
                 # no message to return
                 return {"resp": None, "hidden": False}
