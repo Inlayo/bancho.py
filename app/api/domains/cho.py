@@ -1313,8 +1313,8 @@ class SendPrivateMessage(BasePacket):
                                 )
                             )
 
-                            elapsed = time.time_ns() - pp_calc_st
-                            resp_msg += f" | Elapsed: {magnitude_fmt_time(elapsed)}"
+                            """ elapsed = time.time_ns() - pp_calc_st """
+                            """ resp_msg += f" | Elapsed: {magnitude_fmt_time(elapsed)}" """
                     else:
                         resp_msg = "Could not find map."
 
