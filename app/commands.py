@@ -168,7 +168,6 @@ def command(
 async def _help(ctx: Context) -> str | None:
     """Show all documented commands the player can access."""
     prefix = app.settings.COMMAND_PREFIX
-    l = ["Individual commands"]
 
     for cmd in regular_commands:
         if not cmd.doc or ctx.player.priv & cmd.priv != cmd.priv:
@@ -176,8 +175,6 @@ async def _help(ctx: Context) -> str | None:
             continue
 
         l.append(f"{prefix}{cmd.triggers[0]}: {cmd.doc}")
-
-    l.append("")  # newline
 
     for cmd_set in command_sets:
         l.append(f"{prefix}{cmd_set.trigger}: {cmd_set.doc}")
