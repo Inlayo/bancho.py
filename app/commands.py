@@ -168,7 +168,7 @@ def command(
 async def _help(ctx: Context) -> str | None:
     """Show all documented commands the player can access."""
     prefix = app.settings.COMMAND_PREFIX
-    l = ["Individual commands", "-----------"]
+    l = ["Individual commands"]
 
     for cmd in regular_commands:
         if not cmd.doc or ctx.player.priv & cmd.priv != cmd.priv:
@@ -178,7 +178,6 @@ async def _help(ctx: Context) -> str | None:
         l.append(f"{prefix}{cmd.triggers[0]}: {cmd.doc}")
 
     l.append("")  # newline
-    l.extend(["Command sets", "-----------"])
 
     for cmd_set in command_sets:
         l.append(f"{prefix}{cmd_set.trigger}: {cmd_set.doc}")
@@ -1072,7 +1071,7 @@ str_priv_dict = {
 async def addpriv(ctx: Context) -> str | None:
     """Set privileges for a specified player (by name)."""
     if len(ctx.args) < 2:
-        return "Invalid syntax: !addpriv <name> <role1 role2 role3 ...>"
+        return "Invalid syntax: !addpriv <name> <verified, whitelisted, supporter, premium, alumni, tournament, nominator, mod, admin, developer>"
 
     bits = Privileges(0)
 
@@ -1097,7 +1096,7 @@ async def addpriv(ctx: Context) -> str | None:
 async def rmpriv(ctx: Context) -> str | None:
     """Set privileges for a specified player (by name)."""
     if len(ctx.args) < 2:
-        return "Invalid syntax: !rmpriv <name> <role1 role2 role3 ...>"
+        return "Invalid syntax: !rmpriv <name> <verified, whitelisted, supporter, premium, alumni, tournament, nominator, mod, admin, developer>"
 
     bits = Privileges(0)
 
