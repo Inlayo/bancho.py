@@ -168,7 +168,7 @@ def command(
 async def _help(ctx: Context) -> str | None:
     """Show all documented commands the player can access."""
     prefix = app.settings.COMMAND_PREFIX
-
+    l = [""]
     for cmd in regular_commands:
         if not cmd.doc or ctx.player.priv & cmd.priv != cmd.priv:
             # no doc, or insufficient permissions.
@@ -1145,6 +1145,7 @@ async def givedonator(ctx: Context) -> str | None:
     )
 
     await target.add_privs(Privileges.SUPPORTER)
+    await target.add_privs(Privileges.PREMIUM)
 
     return f"Added {ctx.args[1]} of donator status to {target}."
 
