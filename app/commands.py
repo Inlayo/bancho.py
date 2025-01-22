@@ -6,6 +6,7 @@ import pprint
 import random
 import secrets
 import signal
+import asyncio
 import time
 import traceback
 import uuid
@@ -44,6 +45,7 @@ from app.constants.mods import SPEED_CHANGING_MODS
 from app.constants.mods import Mods
 from app.constants.privileges import ClanPrivileges
 from app.constants.privileges import Privileges
+from app.discord import Webhook
 from app.logging import Ansi
 from app.logging import log
 from app.objects.beatmap import Beatmap
@@ -675,7 +677,10 @@ async def _map(ctx: Context) -> str | None:
         # deactivate rank requests for all ids
         await map_requests_repo.mark_batch_as_inactive(map_ids=modified_beatmap_ids)
 
-    return f"{bmap.embed} updated to {new_status!s}."
+    log_msg = f"{bmap.embed} updated to {new_status!s}."
+    webhook_url = app.settings.DISCORD_AUDIT_LOG_WEBHOOK
+    if webhook_url: webhook = Webhook(webhook_url, content=log_msg); asyncio.create_task(webhook.post())
+    return log_msg
 
 
 """ Mod commands
