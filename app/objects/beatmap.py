@@ -349,7 +349,7 @@ class Beatmap:
     @property
     def discordUrlEmbed(self) -> str: #webhook용으로 추가됨
         """An Discord chat embed to `self`'s osu! beatmap page."""
-        return f"[{self.name}]({self.url})"
+        return f"[{self.full_name}]({self.url})"
 
     @property
     def has_leaderboard(self) -> bool:
