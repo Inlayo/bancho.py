@@ -677,11 +677,9 @@ async def _map(ctx: Context) -> str | None:
         # deactivate rank requests for all ids
         await map_requests_repo.mark_batch_as_inactive(map_ids=modified_beatmap_ids)
 
-    log_msg = f"{bmap.embed} updated to {new_status!s}."
     webhook_url = app.settings.DISCORD_AUDIT_LOG_WEBHOOK
-    log(f"webhook_url =  {webhook_url}", Ansi.LYELLOW)
-    if webhook_url: webhook = Webhook(webhook_url, content=log_msg); asyncio.create_task(webhook.post())
-    return log_msg
+    if webhook_url: webhook = Webhook(webhook_url, content=f"{bmap.discordUrlEmbed} updated to {new_status!s}."); asyncio.create_task(webhook.post())
+    return f"{bmap.embed} updated to {new_status!s}."
 
 
 """ Mod commands
