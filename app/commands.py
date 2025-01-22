@@ -1064,7 +1064,7 @@ str_priv_dict = {
 }
 
 
-@command(Privileges.DEVELOPER, hidden=True)
+@command(Privileges.ADMINISTRATOR, hidden=True)
 async def addpriv(ctx: Context) -> str | None:
     """Set privileges for a specified player (by name)."""
     if len(ctx.args) < 2:
@@ -1089,7 +1089,7 @@ async def addpriv(ctx: Context) -> str | None:
     return f"Updated {target}'s privileges."
 
 
-@command(Privileges.DEVELOPER, hidden=True)
+@command(Privileges.ADMINISTRATOR, hidden=True)
 async def rmpriv(ctx: Context) -> str | None:
     """Set privileges for a specified player (by name)."""
     if len(ctx.args) < 2:
