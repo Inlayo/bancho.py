@@ -758,7 +758,7 @@ async def osuSubmitModularSelector(
                     if prev_n1:
                         if score.player.id != prev_n1["id"]:
                             ann.append(
-                                f"(Previous #1: [https://{app.settings.DOMAIN}/u/"
+                                f"(Previous #1: [https://osu.{app.settings.DOMAIN}/u/"
                                 "{id} {name}])".format(
                                     id=prev_n1["id"],
                                     name=prev_n1["name"],
