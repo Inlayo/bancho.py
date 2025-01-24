@@ -814,7 +814,9 @@ async def osuSubmitModularSelector(
                             value=f"{score.bmap.full_name} {MODS} with {score.acc:.2f}% for {performance}.{PreviousMsg}",
                             inline=False,
                         )
-                        embed.set_image(url=f"https://b.redstar.moe/bg/{bmap.id}")
+                        embed.set_image(
+                            url=f"https://osu.direct/api/media/background/{bmap.id}",
+                        )
                         embed.set_footer(
                             text="osu!Inlayo",
                             icon_url=f"https://a.{app.settings.DOMAIN}",

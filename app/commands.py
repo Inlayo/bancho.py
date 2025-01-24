@@ -559,10 +559,10 @@ async def request(ctx: Context) -> str | None:
     embed.set_author(
         name=f"{bmap.full_name} was just Qualified.",
         url=f"https://osu.{app.settings.DOMAIN}/b/{bmap.id}",
-        icon_url=f"https://a.{app.settings.DOMAIN}/1",
+        icon_url=f"https://a.{app.settings.DOMAIN}/0",
     )
-    embed.set_footer(text="osu!Inlayo", icon_url=f"https://a.{app.settings.DOMAIN}")
-    embed.set_image(url=f"https://b.redstar.moe/bg/{bmap.id}")
+    embed.set_footer(text="osu!Inlayo", icon_url=f"https://a.{app.settings.DOMAIN}/0")
+    embed.set_image(url=f"https://osu.direct/api/media/background/{bmap.id}")
     embed.set_timestamp()
     webhook = Webhook(webhook_url, embeds=[embed])
     asyncio.create_task(webhook.post())
@@ -719,8 +719,11 @@ async def _map(ctx: Context) -> str | None:
             url=f"https://osu.{app.settings.DOMAIN}/b/{bmap.id}",
             icon_url=f"https://a.{app.settings.DOMAIN}/{ctx.player.id}",
         )
-        embed.set_footer(text="osu!Inlayo")
-        embed.set_image(url=f"https://b.redstar.moe/bg/{bmap.id}")
+        embed.set_footer(
+            text="osu!Inlayo",
+            icon_url=f"https://a.{app.settings.DOMAIN}/0",
+        )
+        embed.set_image(url=f"https://osu.direct/api/media/background/{bmap.id}")
         webhook = Webhook(webhook_url, embeds=[embed])
         asyncio.create_task(webhook.post())
     return f"{bmap.embed} Updated {old_status} --> {new_status!s} by [https://osu.{app.settings.DOMAIN}/u/{ctx.player.id} {ctx.player.name}]."
