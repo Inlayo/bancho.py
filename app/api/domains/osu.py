@@ -771,7 +771,7 @@ async def osuSubmitModularSelector(
                                     name=prev_n1["name"],
                                 ),
                             )
-                            PreviousMsg = f" (Previous #1: [{prev_n1['name']}](https://osu.{app.settings.DOMAIN}/u/{prev_n1['id']}))"
+                            PreviousMsg = f"(Previous #1: [https://osu.{app.settings.DOMAIN}/u/{prev_n1['id']} {prev_n1['name']}])"
 
                     assert announce_chan is not None
                     announce_chan.send(" ".join(ann), sender=score.player, to_self=True)
@@ -800,13 +800,13 @@ async def osuSubmitModularSelector(
 
                         embed = Embed(
                             title="Beatmap link",
-                            description=f"{player.name} ({player.id}) #1 on https://{app.settings.DOMAIN}/b/{bmap.id}",
+                            description=f"{player.name} ({player.id}) #1 on https://osu.{app.settings.DOMAIN}/b/{bmap.id}",
                             url=f"https://{app.settings.DOMAIN}/b/{bmap.id}",
                             color=color,
                         )
                         embed.set_author(
                             name=f"{player.name}",
-                            url=f"https://{app.settings.DOMAIN}/u/{player.id}",
+                            url=f"https://osu.{app.settings.DOMAIN}/u/{player.id}",
                             icon_url=f"https://a.{app.settings.DOMAIN}/{player.id}",
                         )
                         embed.set_thumbnail(url=ranked_img_url)
