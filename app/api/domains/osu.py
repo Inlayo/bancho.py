@@ -819,7 +819,7 @@ async def osuSubmitModularSelector(
                         )
                         embed.set_footer(
                             text="osu!Inlayo",
-                            icon_url=f"https://a.{app.settings.DOMAIN}",
+                            icon_url=f"https://a.{app.settings.DOMAIN}/a",
                         )
                         embed.set_timestamp()
                         webhook = Webhook(webhook_url, embeds=[embed])
