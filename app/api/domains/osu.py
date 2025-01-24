@@ -761,17 +761,16 @@ async def osuSubmitModularSelector(
                         {"map_md5": score.bmap.md5, "mode": score.mode},
                     )
 
-                    PreviousMsg = ""
                     if prev_n1:
                         if score.player.id != prev_n1["id"]:
                             ann.append(
-                                f"(Previous #1: [<https://osu.{app.settings.DOMAIN}/u/"
-                                "{id} {name}>])".format(
+                                f"(Previous #1: [https://osu.{app.settings.DOMAIN}/u/"
+                                "{id} {name}])".format(
                                     id=prev_n1["id"],
                                     name=prev_n1["name"],
                                 ),
                             )
-                            PreviousMsg = f"(Previous #1: [https://osu.{app.settings.DOMAIN}/u/{prev_n1['id']} {prev_n1['name']}])"
+                            PreviousMsg = f"(Previous #1: [{prev_n1['name']}](https://osu.{app.settings.DOMAIN}/u/{prev_n1['id']}))"
 
                     assert announce_chan is not None
                     announce_chan.send(" ".join(ann), sender=score.player, to_self=True)
