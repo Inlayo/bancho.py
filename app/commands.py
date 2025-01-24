@@ -1,12 +1,12 @@
 from __future__ import annotations
 
+import asyncio
 import importlib.metadata
 import os
 import pprint
 import random
 import secrets
 import signal
-import asyncio
 import time
 import traceback
 import uuid
@@ -45,6 +45,7 @@ from app.constants.mods import SPEED_CHANGING_MODS
 from app.constants.mods import Mods
 from app.constants.privileges import ClanPrivileges
 from app.constants.privileges import Privileges
+from app.discord import Embed
 from app.discord import Webhook
 from app.logging import Ansi
 from app.logging import log
@@ -542,6 +543,29 @@ async def request(ctx: Context) -> str | None:
 
     await map_requests_repo.create(map_id=bmap.id, player_id=ctx.player.id, active=True)
 
+    # update all maps in the set
+    for _bmap in bmap.set.maps:
+        await maps_repo.partial_update(_bmap.id, status=RankedStatus(4), frozen=True)
+    # make sure cache and db are synced about the newest change
+    for _bmap in app.state.cache.beatmapset[bmap.set_id].maps:
+        _bmap.status = RankedStatus(4)
+        _bmap.frozen = True
+
+    webhook_url = app.settings.DISCORD_RANKREQ_LOG_WEBHOOK
+    embed = Embed(
+        description=f"Status Changed by {app.state.sessions.bot.name}. <@&1326911051077517415>\nRequested by {ctx.player}",
+        color=242424,
+    )
+    embed.set_author(
+        name=f"{bmap.full_name} was just Qualified.",
+        url=f"https://osu.{app.settings.DOMAIN}/b/{bmap.id}",
+        icon_url=f"https://a.{app.settings.DOMAIN}/1",
+    )
+    embed.set_footer(text="osu!Inlayo", icon_url=f"https://a.{app.settings.DOMAIN}")
+    embed.set_image(url=f"https://b.redstar.moe/bg/{bmap.id}")
+    embed.set_timestamp()
+    webhook = Webhook(webhook_url, embeds=[embed])
+    asyncio.create_task(webhook.post())
     return "Request submitted."
 
 
@@ -609,7 +633,13 @@ async def requests(ctx: Context) -> str | None:
     return "\n".join(l)
 
 
-_status_str_to_int_map = {"unrank": 0, "rank": 2, "love": 5}
+_status_str_to_int_map = {
+    "unrank": 0,
+    "rank": 2,
+    "love": 5,
+    "approved": 3,
+    "qualified": 4,
+}
 
 
 def status_to_id(s: str) -> int:
@@ -621,15 +651,16 @@ async def _map(ctx: Context) -> str | None:
     """Changes the ranked status of the most recently /np'ed map."""
     if (
         len(ctx.args) != 2
-        or ctx.args[0] not in ("rank", "unrank", "love")
+        or ctx.args[0] not in ("rank", "unrank", "love", "approved", "qualified")
         or ctx.args[1] not in ("set", "map")
     ):
-        return "Invalid syntax: !map <rank/unrank/love> <map/set>"
+        return "Invalid syntax: !map <rank/unrank/love/approved/qualified> <map/set>"
 
     if ctx.player.last_np is None or time.time() >= ctx.player.last_np["timeout"]:
         return "Please /np a map first!"
 
     bmap = ctx.player.last_np["bmap"]
+    old_status = bmap.status
     new_status = RankedStatus(status_to_id(ctx.args[0]))
 
     if ctx.args[1] == "map":
@@ -677,9 +708,22 @@ async def _map(ctx: Context) -> str | None:
         # deactivate rank requests for all ids
         await map_requests_repo.mark_batch_as_inactive(map_ids=modified_beatmap_ids)
 
-    webhook_url = app.settings.DISCORD_AUDIT_LOG_WEBHOOK
-    if webhook_url: webhook = Webhook(webhook_url, content=f"{bmap.discordUrlEmbed} updated to {new_status!s}."); asyncio.create_task(webhook.post())
-    return f"{bmap.embed} updated to {new_status!s}."
+    webhook_url = app.settings.DISCORD_BEATMAP_LOG_WEBHOOK
+    if webhook_url:
+        embed = Embed(
+            description=f"Status Changed by {ctx.player.name}",
+            color=13781460,
+        )
+        embed.set_author(
+            name=f"{bmap.full_name} updated {str(RankedStatus(old_status))} --> {new_status!s} ({ctx.args[1]})",
+            url=f"https://osu.{app.settings.DOMAIN}/b/{bmap.id}",
+            icon_url=f"https://a.{app.settings.DOMAIN}/{ctx.player.id}",
+        )
+        embed.set_footer(text="osu!Inlayo")
+        embed.set_image(url=f"https://b.redstar.moe/bg/{bmap.id}")
+        webhook = Webhook(webhook_url, embeds=[embed])
+        asyncio.create_task(webhook.post())
+    return f"{bmap.embed} Updated {old_status} --> {new_status!s} by [https://osu.{app.settings.DOMAIN}/u/{ctx.player.id} {ctx.player.name}]."
 
 
 """ Mod commands

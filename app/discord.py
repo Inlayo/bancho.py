@@ -4,11 +4,26 @@ from __future__ import annotations
 
 from typing import Any
 
+import orjson
 from tenacity import retry
 from tenacity import stop_after_attempt
 from tenacity import wait_exponential
 
 from app.state import services
+
+# NOTE: this module currently only implements discord webhooks
+
+__all__ = (
+    "Footer",
+    "Image",
+    "Thumbnail",
+    "Video",
+    "Provider",
+    "Author",
+    "Field",
+    "Embed",
+    "Webhook",
+)
 
 
 class Footer:
@@ -79,6 +94,16 @@ class Embed:
         self.author: Author | None = kwargs.get("author")
 
         self.fields: list[Field] = kwargs.get("fields", [])
+
+    def set_timestamp(self) -> None:  # RedstarOSU 코드 (discord-webhook===0.8.0)
+        """
+        set timestamp of embed content
+        :param timestamp: (optional) timestamp of embed content
+        """
+        import datetime
+        import time
+
+        self.timestamp = str(datetime.datetime.utcfromtimestamp(time.time()))
 
     def set_footer(self, **kwargs: Any) -> None:
         self.footer = Footer(**kwargs)
@@ -154,7 +179,7 @@ class Webhook:
 
             payload["embeds"].append(embed_payload)
 
-        return payload
+        return orjson.dumps(payload, default=str).decode()
 
     @retry(
         stop=stop_after_attempt(10),
@@ -167,7 +192,7 @@ class Webhook:
         headers = {"Content-Type": "application/json"}
         response = await services.http_client.post(
             self.url,
-            json=self.json,
+            content=self.json,
             headers=headers,
         )
         response.raise_for_status()

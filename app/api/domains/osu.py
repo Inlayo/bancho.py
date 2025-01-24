@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import copy
 import hashlib
 import random
@@ -49,6 +50,8 @@ from app.constants.clientflags import LastFMFlags
 from app.constants.gamemodes import GameMode
 from app.constants.mods import Mods
 from app.constants.privileges import Privileges
+from app.discord import Embed
+from app.discord import Webhook
 from app.logging import Ansi
 from app.logging import log
 from app.objects import models
@@ -740,6 +743,9 @@ async def osuSubmitModularSelector(
 
                     if score.mods:
                         ann.insert(1, f"+{score.mods!r}")
+                        MODS = f"+{score.mods!r}"
+                    else:
+                        MODS = ""
 
                     scoring_metric = (
                         "pp" if score.mode >= GameMode.RELAX_OSU else "score"
@@ -755,18 +761,68 @@ async def osuSubmitModularSelector(
                         {"map_md5": score.bmap.md5, "mode": score.mode},
                     )
 
+                    PreviousMsg = ""
                     if prev_n1:
                         if score.player.id != prev_n1["id"]:
                             ann.append(
-                                f"(Previous #1: [https://osu.{app.settings.DOMAIN}/u/"
-                                "{id} {name}])".format(
+                                f"(Previous #1: [<https://osu.{app.settings.DOMAIN}/u/"
+                                "{id} {name}>])".format(
                                     id=prev_n1["id"],
                                     name=prev_n1["name"],
                                 ),
                             )
+                            PreviousMsg = f" (Previous #1: [{prev_n1['name']}](https://osu.{app.settings.DOMAIN}/u/{prev_n1['id']}))"
 
                     assert announce_chan is not None
                     announce_chan.send(" ".join(ann), sender=score.player, to_self=True)
+
+                    webhook_url = app.settings.DISCORD_LEADERBOARD_LOG_WEBHOOK
+                    if webhook_url:
+                        if score.mods & 128:
+                            color = 31406  # UsingRelax
+                        elif score.mods & 8192:
+                            color = 7065737  # UsingAutopilot
+                        else:
+                            color = 13781460
+
+                        if bmap.status == 2:
+                            ranked_img_url = "https://i.imgur.com/hfdujvi.png"
+                        elif bmap.status == 5:
+                            ranked_img_url = "https://i.imgur.com/R7dFUL5.png"
+                        elif bmap.status == 3:
+                            ranked_img_url = "https://i.imgur.com/lqsQe0T.png"
+                        elif bmap.status == 4:
+                            ranked_img_url = "https://i.imgur.com/lqsQe0T.png"
+                        elif bmap.status == 0:
+                            ranked_img_url = "https://i.imgur.com/1k2YqGp.png"
+                        else:
+                            ranked_img_url = "https://i.imgur.com/1k2YqGp.png"
+
+                        embed = Embed(
+                            title="Beatmap link",
+                            description=f"{player.name} ({player.id}) #1 on https://{app.settings.DOMAIN}/b/{bmap.id}",
+                            url=f"https://{app.settings.DOMAIN}/b/{bmap.id}",
+                            color=color,
+                        )
+                        embed.set_author(
+                            name=f"{player.name}",
+                            url=f"https://{app.settings.DOMAIN}/u/{player.id}",
+                            icon_url=f"https://a.{app.settings.DOMAIN}/{player.id}",
+                        )
+                        embed.set_thumbnail(url=ranked_img_url)
+                        embed.add_field(
+                            name=f"[{score.mode!r}]",
+                            value=f"{score.bmap.full_name} {MODS} with {score.acc:.2f}% for {performance}.{PreviousMsg}",
+                            inline=False,
+                        )
+                        embed.set_image(url=f"https://b.redstar.moe/bg/{bmap.id}")
+                        embed.set_footer(
+                            text="osu!Inlayo",
+                            icon_url=f"https://a.{app.settings.DOMAIN}",
+                        )
+                        embed.set_timestamp()
+                        webhook = Webhook(webhook_url, embeds=[embed])
+                        asyncio.create_task(webhook.post())
 
             # this score is our best score.
             # update any preexisting personal best
