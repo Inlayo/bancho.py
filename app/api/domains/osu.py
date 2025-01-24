@@ -761,6 +761,7 @@ async def osuSubmitModularSelector(
                         {"map_md5": score.bmap.md5, "mode": score.mode},
                     )
 
+                    PreviousMsg = ""
                     if prev_n1:
                         if score.player.id != prev_n1["id"]:
                             ann.append(
@@ -819,7 +820,7 @@ async def osuSubmitModularSelector(
                         )
                         embed.set_footer(
                             text="osu!Inlayo",
-                            icon_url=f"https://a.{app.settings.DOMAIN}/a",
+                            icon_url=f"https://a.{app.settings.DOMAIN}/0",
                         )
                         embed.set_timestamp()
                         webhook = Webhook(webhook_url, embeds=[embed])
