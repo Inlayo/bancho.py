@@ -15,10 +15,10 @@ run-caddy:
 
 last?=1
 logs:
-	docker compose logs -f bancho mysql redis
+	docker compose logs -f bancho mysql redis --tail 1000
 
 log-bancho:
-	docker compose logs -f bancho
+	docker compose logs -f bancho --tail 1000
 
 shell:
 	poetry shell

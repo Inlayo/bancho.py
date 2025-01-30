@@ -562,7 +562,7 @@ async def request(ctx: Context) -> str | None:
         icon_url=f"https://a.{app.settings.DOMAIN}/0",
     )
     embed.set_footer(text="osu!Inlayo", icon_url=f"https://a.{app.settings.DOMAIN}/0")
-    embed.set_image(url=f"https://osu.direct/api/media/background/{bmap.id}")
+    embed.set_image(url=f"https://assets.ppy.sh/beatmaps/{bmap.set_id}/covers/row.jpg")
     embed.set_timestamp()
     webhook = Webhook(webhook_url, embeds=[embed])
     asyncio.create_task(webhook.post())
@@ -711,7 +711,7 @@ async def _map(ctx: Context) -> str | None:
     webhook_url = app.settings.DISCORD_BEATMAP_LOG_WEBHOOK
     if webhook_url:
         embed = Embed(
-            description=f"Status Changed by {ctx.player.name}",
+            description=f"Status Changed by [{ctx.player.name}](https://osu.{app.settings.DOMAIN}/u/{ctx.player.id})",
             color=13781460,
         )
         embed.set_author(
@@ -723,10 +723,18 @@ async def _map(ctx: Context) -> str | None:
             text="osu!Inlayo",
             icon_url=f"https://a.{app.settings.DOMAIN}/0",
         )
-        embed.set_image(url=f"https://osu.direct/api/media/background/{bmap.id}")
+        embed.set_image(
+            url=f"https://assets.ppy.sh/beatmaps/{bmap.set_id}/covers/row.jpg",
+        )
         webhook = Webhook(webhook_url, embeds=[embed])
         asyncio.create_task(webhook.post())
-    return f"{bmap.embed} Updated {old_status} --> {new_status!s} by [https://osu.{app.settings.DOMAIN}/u/{ctx.player.id} {ctx.player.name}]."
+    msg = f"{bmap.embed} Updated {old_status} --> {new_status!s} by [https://osu.{app.settings.DOMAIN}/u/{ctx.player.id} {ctx.player.name}]."
+    announce_chan = app.state.sessions.channels.get_by_name("#announce")
+    if announce_chan:
+        announce_chan.send(msg, sender=app.state.sessions.bot)
+        return "Done. Check #announce"
+    else:
+        return msg
 
 
 """ Mod commands
