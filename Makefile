@@ -13,7 +13,7 @@ run-bg:
 run-caddy:
 	caddy run --envfile .env --config ext/Caddyfile
 
-last?=1
+last?=1000
 logs:
 	docker compose logs -f bancho mysql redis --tail ${last}
 
