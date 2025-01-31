@@ -816,7 +816,7 @@ async def osuSubmitModularSelector(
                             inline=False,
                         )
                         embed.set_image(
-                            url=f"https://assets.ppy.sh/beatmaps/{bmap.set_id}/covers/row.jpg",
+                            url=f"https://assets.ppy.sh/beatmaps/{bmap.set_id}/covers/raw.jpg",
                         )
                         embed.set_footer(
                             text="osu!Inlayo",

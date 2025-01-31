@@ -562,7 +562,7 @@ async def request(ctx: Context) -> str | None:
         icon_url=f"https://a.{app.settings.DOMAIN}/0",
     )
     embed.set_footer(text="osu!Inlayo", icon_url=f"https://a.{app.settings.DOMAIN}/0")
-    embed.set_image(url=f"https://assets.ppy.sh/beatmaps/{bmap.set_id}/covers/row.jpg")
+    embed.set_image(url=f"https://assets.ppy.sh/beatmaps/{bmap.set_id}/covers/raw.jpg")
     embed.set_timestamp()
     webhook = Webhook(webhook_url, embeds=[embed])
     asyncio.create_task(webhook.post())
@@ -724,7 +724,7 @@ async def _map(ctx: Context) -> str | None:
             icon_url=f"https://a.{app.settings.DOMAIN}/0",
         )
         embed.set_image(
-            url=f"https://assets.ppy.sh/beatmaps/{bmap.set_id}/covers/row.jpg",
+            url=f"https://assets.ppy.sh/beatmaps/{bmap.set_id}/covers/raw.jpg",
         )
         webhook = Webhook(webhook_url, embeds=[embed])
         asyncio.create_task(webhook.post())
