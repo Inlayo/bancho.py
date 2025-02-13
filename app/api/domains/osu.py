@@ -801,7 +801,7 @@ async def osuSubmitModularSelector(
                         embed = Embed(
                             title="Beatmap link",
                             description=f"{player.name} ({player.id}) #1 on https://osu.{app.settings.DOMAIN}/b/{bmap.id}",
-                            url=f"https://{app.settings.DOMAIN}/b/{bmap.id}",
+                            url=f"https://osu.{app.settings.DOMAIN}/b/{bmap.id}",
                             color=color,
                         )
                         embed.set_author(
