@@ -287,6 +287,29 @@ async def changename(ctx: Context) -> str | None:
     return None
 
 
+@command(Privileges.UNRESTRICTED)
+async def dl(ctx: Context) -> str | None:
+    """Return a download link to the user's current map (situation dependant)."""
+    bmap = None
+
+    # priority: multiplayer -> spectator -> last np
+    match = ctx.player.match
+    spectating = ctx.player.spectating
+
+    if match and match.map_id:
+        bmap = await Beatmap.from_md5(match.map_md5)
+    elif spectating and spectating.status.map_id:
+        bmap = await Beatmap.from_md5(spectating.status.map_md5)
+    elif ctx.player.last_np is not None and time.time() < ctx.player.last_np["timeout"]:
+        bmap = ctx.player.last_np["bmap"]
+
+    if ctx.player.last_np is None or time.time() >= ctx.player.last_np["timeout"]: return "Please /np a map first!"
+
+    return "Download [https://osu.ppy.sh/s/{bsid} {sn}] from [https://redstar.moe/d/{bsid} Redstar], [https://nerinyan.moe/d/{bsid} NeriNyan], [https://catboy.best/d/{bsid} catboy], [https://chimu.moe/d/{bsid} chimu], [https://chimu.moe/d/{bsid} Bloodcat], [https://txy1.sayobot.cn/beatmaps/download/full/{bsid} sayobot], [https://beatconnect.io/b/{bsid} Beatconnect] or [osu://dl/{bsid} osu!direct].".format(
+		bsid = bmap.set_id, sn = bmap.full_name
+	)
+
+
 @command(Privileges.UNRESTRICTED, aliases=["bloodcat", "beatconnect", "chimu", "q"])
 async def maplink(ctx: Context) -> str | None:
     """Return a download link to the user's current map (situation dependant)."""
