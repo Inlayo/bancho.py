@@ -305,8 +305,8 @@ async def dl(ctx: Context) -> str | None:
 
     if ctx.player.last_np is None or time.time() >= ctx.player.last_np["timeout"]: return "Please /np a map first!"
 
-    return "Download [https://osu.ppy.sh/s/{bsid} {sn}] from [https://redstar.moe/d/{bsid} Redstar], [https://nerinyan.moe/d/{bsid} NeriNyan], [https://catboy.best/d/{bsid} catboy], [https://chimu.moe/d/{bsid} chimu], [https://chimu.moe/d/{bsid} Bloodcat], [https://txy1.sayobot.cn/beatmaps/download/full/{bsid} sayobot], [https://beatconnect.io/b/{bsid} Beatconnect] or [osu://dl/{bsid} osu!direct].".format(
-		bsid = bmap.set_id, sn = bmap.full_name
+    return "Download [https://osu.ppy.sh/s/{bsid} {sn}] from [https://redstar.moe/d/{bsid} Redstar], [https://nerinyan.moe/d/{bsid} NeriNyan], [https://catboy.best/d/{bsid} catboy], [https://chimu.moe/d/{bsid} chimu], [https://chimu.moe/d/{bsid} Bloodcat], [https://txy1.sayobot.cn/beatmaps/download/full/{bsid} sayobot], [https://beatconnect.io/b/{bsid} Beatconnect] or [osu://b/{bid} osu!direct].".format(
+		sn = bmap.full_name, bsid = bmap.set_id, bid = bmap.id
 	)
 
 
