@@ -303,11 +303,14 @@ async def dl(ctx: Context) -> str | None:
     elif ctx.player.last_np is not None and time.time() < ctx.player.last_np["timeout"]:
         bmap = ctx.player.last_np["bmap"]
 
-    if ctx.player.last_np is None or time.time() >= ctx.player.last_np["timeout"]: return "Please /np a map first!"
+    if ctx.player.last_np is None or time.time() >= ctx.player.last_np["timeout"]:
+        return "Please /np a map first!"
 
     return "Download [https://osu.ppy.sh/s/{bsid} {sn}] from [https://redstar.moe/d/{bsid} Redstar], [https://nerinyan.moe/d/{bsid} NeriNyan], [https://catboy.best/d/{bsid} catboy], [https://chimu.moe/d/{bsid} chimu], [https://chimu.moe/d/{bsid} Bloodcat], [https://txy1.sayobot.cn/beatmaps/download/full/{bsid} sayobot], [https://beatconnect.io/b/{bsid} Beatconnect] or [osu://b/{bid} osu!direct].".format(
-		sn = bmap.full_name, bsid = bmap.set_id, bid = bmap.id
-	)
+        sn=bmap.full_name,
+        bsid=bmap.set_id,
+        bid=bmap.id,
+    )
 
 
 @command(Privileges.UNRESTRICTED, aliases=["bloodcat", "beatconnect", "chimu", "q"])
@@ -553,8 +556,8 @@ async def request(ctx: Context) -> str | None:
 
     bmap = ctx.player.last_np["bmap"]
 
-    if bmap.status != RankedStatus.Pending:
-        return "Only pending maps may be requested for status change."
+    if bmap.status != RankedStatus.Pending and bmap.status != RankedStatus.Approved:
+        return "Only not ranked maps may be requested for status change."
 
     map_requests = await map_requests_repo.fetch_all(
         map_id=bmap.id,
