@@ -466,10 +466,10 @@ class StatsUpdateRequest(BasePacket):
 # TODO: these should probably be moved to the config.
 WELCOME_MSG = "\n".join(
     (
-        f"Welcome to {BASE_DOMAIN}.",
+        """ f"Welcome to {BASE_DOMAIN}.",
         "To see a list of commands, use !help.",
         "We have a public (Discord)[https://osu.inla.kr/discord]!",
-        "Enjoy the server!",
+        "Enjoy the server!", """
     ),
 )
 
