@@ -2519,7 +2519,7 @@ async def clan_leave(ctx: Context) -> str | None:
 
 # TODO: !clan inv, !clan join, !clan leave
 
-""" @clan_commands.add(Privileges.UNRESTRICTED, aliases=["j"])
+@clan_commands.add(Privileges.UNRESTRICTED, aliases=["j"])
 async def clan_join(ctx: Context) -> str | None:
     """Lets a user join a Clan."""
     if not ctx.args:
@@ -2546,7 +2546,7 @@ async def clan_join(ctx: Context) -> str | None:
         clan_priv=ClanPrivileges.Member,
     )
 
-    return f"You have successfully joined {clan_display_name}." """ """ <<여기부분 클랜 조인 관련 부분 코드 넣은거임 확인좀 """
+    return f"You have successfully joined {clan_display_name}."
 
 
 @clan_commands.add(Privileges.UNRESTRICTED, aliases=["l"])
