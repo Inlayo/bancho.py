@@ -971,7 +971,7 @@ async def user(ctx: Context) -> str | None:
     )
 
 
-@command(Privileges.ADMINISTRATOR, hidden=True)
+@command(Privileges.MODERATOR, hidden=True)
 async def restrict(ctx: Context) -> str | None:
     """Restrict a specified player's account, with a reason."""
     if len(ctx.args) < 2:
@@ -1002,7 +1002,7 @@ async def restrict(ctx: Context) -> str | None:
     return f"{target} was restricted."
 
 
-@command(Privileges.ADMINISTRATOR, hidden=True)
+@command(Privileges.MODERATOR, hidden=True)
 async def unrestrict(ctx: Context) -> str | None:
     """Unrestrict a specified player's account, with a reason."""
     if len(ctx.args) < 2:
