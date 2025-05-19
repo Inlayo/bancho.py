@@ -45,6 +45,14 @@ create table clans
 		unique (tag)
 );
 
+CREATE TABLE IF NOT EXISTS `clans_invites` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `clan` int NOT NULL,
+  `invite` varchar(8) NOT NULL,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE KEY `clan` (`clan`) USING BTREE
+);
+
 create table client_hashes
 (
 	userid int not null,
