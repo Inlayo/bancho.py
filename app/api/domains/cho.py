@@ -136,9 +136,9 @@ async def bancho_view_online_users() -> Response:
 <!DOCTYPE html>
 <body style="font-family: monospace;  white-space: pre-wrap;"><a href="/">back</a>
 users:
-{new_line.join([f"({p.id:>{id_max_length}}): {p.safe_name}" for p in players])}
+{new_line.join([f"({p.id:>{id_max_length}}): {p.name}" for p in players])}
 bots:
-{new_line.join(f"({p.id:>{id_max_length}}): {p.safe_name}" for p in bots)}
+{new_line.join(f"({p.id:>{id_max_length}}): {p.name}" for p in bots)}
 </body>
 </html>""",
     )
