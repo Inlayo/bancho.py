@@ -303,6 +303,9 @@ async def dl(ctx: Context) -> str | None:
     elif ctx.player.last_np is not None and time.time() < ctx.player.last_np["timeout"]:
         bmap = ctx.player.last_np["bmap"]
 
+    if bmap is None:
+        return "No map found!"
+
     if ctx.player.last_np is None or time.time() >= ctx.player.last_np["timeout"]:
         return "Please /np a map first!"
 
@@ -2531,10 +2534,10 @@ async def clan_join(ctx: Context) -> str | None:
         return "Could not find a clan by that name."
 
     if ctx.player.clan_id:
-        clan = await clans_repo.fetch_one(id=ctx.player.clan_id)
-        if clan:
-            clan_display_name = f"[{clan['tag']}] {clan['name']}"
-            return f"You're already a member of {clan_display_name}!"
+        pclan = await clans_repo.fetch_one(id=ctx.player.clan_id)
+        if pclan is not None:
+            pclan_display_name = f"[{pclan['tag']}] {pclan['name']}"
+            return f"You're already a member of {pclan_display_name}!"
 
     ctx.player.clan_id = clan["id"]
     ctx.player.clan_priv = ClanPrivileges.Member
