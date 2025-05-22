@@ -13,7 +13,7 @@ import time
 import app.settings
 from time import localtime, strftime
 
-def getTimestamp():
+def getTimestamp() -> str:
 	"""
 	Return current time in YYYY-MM-DD HH:MM:SS format.
 	Used in logs.
@@ -24,7 +24,7 @@ def getTimestamp():
 
 
 
-def logMessage(message, alertType = "INFO", messageColor = ENDC, discord = None, alertDev = False, of = None, stdout = True):
+def logMessage(message, alertType = "INFO", messageColor = ENDC, discord = None, alertDev = False, of = None, stdout = True) -> None:
 	"""
 	Log a message
 
@@ -70,7 +70,7 @@ def logMessage(message, alertType = "INFO", messageColor = ENDC, discord = None,
 	if stdout:
 		print(finalMessageConsole)
 
-def warning(message, discord = None, alertDev = False):
+def warning(message, discord = None, alertDev = False) -> None:
 	"""
 	Log a warning to stdout and optionally to Discord
 
@@ -83,7 +83,7 @@ def warning(message, discord = None, alertDev = False):
 	"""
 	logMessage(message, "WARNING", YELLOW, discord, alertDev)
 
-def error(message, discord = None, alertDev = True):
+def error(message, discord = None, alertDev = True) -> None:
 	"""
 	Log a warning message to stdout and optionally to Discord
 
@@ -96,7 +96,7 @@ def error(message, discord = None, alertDev = True):
 	"""
 	logMessage(message, "ERROR", RED, discord, alertDev)
 
-def info(message, discord = None, alertDev = False):
+def info(message, discord = None, alertDev = False) -> None:
 	"""
 	Log an info message to stdout and optionally to Discord
 
@@ -109,7 +109,7 @@ def info(message, discord = None, alertDev = False):
 	"""
 	logMessage(message, "INFO", ENDC, discord, alertDev)
 
-def debug(message, debug2=False):
+def debug(message, debug2=False) -> None:
 	"""
 	Log a debug message to stdout.
 	Works only if the server is running in debug mode.
@@ -124,9 +124,9 @@ def debug(message, debug2=False):
 	if app.settings.DEBUG or debug2:
 		logMessage(message, "DEBUG", PINK)
 
-def debug2(message): return debug(message, debug2=True)
+def debug2(message) -> None: return debug(message, debug2=True)
 
-def chat(message):
+def chat(message) -> None:
 	"""
 	Log a public chat message to stdout and to chatlog_public.txt.
 
