@@ -556,7 +556,7 @@ async def request(ctx: Context) -> str | None:
 
     bmap = ctx.player.last_np["bmap"]
 
-    if bmap.status == RankedStatus.Ranked and bmap.status == RankedStatus.Approved:
+    if bmap.status in (RankedStatus.Ranked, RankedStatus.Approved):
         return "Only not ranked maps may be requested for status change."
 
     map_requests = await map_requests_repo.fetch_all(
