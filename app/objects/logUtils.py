@@ -24,7 +24,7 @@ def getTimestamp() -> str:
 
 
 
-def logMessage(message, alertType = "INFO", messageColor = ENDC, discord = None, alertDev = False, of = None, stdout = True) -> None:
+def logMessage(message: str, alertType: str = "INFO", messageColor: str = ENDC, discord: str = "", alertDev: bool = False, of: str = "", stdout: bool = True) -> None:
 	"""
 	Log a message
 
@@ -70,7 +70,7 @@ def logMessage(message, alertType = "INFO", messageColor = ENDC, discord = None,
 	if stdout:
 		print(finalMessageConsole)
 
-def warning(message, discord = None, alertDev = False) -> None:
+def warning(message: str, discord: str = "", alertDev: bool = False) -> None:
 	"""
 	Log a warning to stdout and optionally to Discord
 
@@ -83,7 +83,7 @@ def warning(message, discord = None, alertDev = False) -> None:
 	"""
 	logMessage(message, "WARNING", YELLOW, discord, alertDev)
 
-def error(message, discord = None, alertDev = True) -> None:
+def error(message: str, discord: str = "", alertDev: bool = True) -> None:
 	"""
 	Log a warning message to stdout and optionally to Discord
 
@@ -96,7 +96,7 @@ def error(message, discord = None, alertDev = True) -> None:
 	"""
 	logMessage(message, "ERROR", RED, discord, alertDev)
 
-def info(message, discord = None, alertDev = False) -> None:
+def info(message: str, discord: str = "", alertDev: bool = False) -> None:
 	"""
 	Log an info message to stdout and optionally to Discord
 
@@ -109,7 +109,7 @@ def info(message, discord = None, alertDev = False) -> None:
 	"""
 	logMessage(message, "INFO", ENDC, discord, alertDev)
 
-def debug(message, debug2=False) -> None:
+def debug(message: str, debug2: bool=False) -> None:
 	"""
 	Log a debug message to stdout.
 	Works only if the server is running in debug mode.
@@ -124,9 +124,9 @@ def debug(message, debug2=False) -> None:
 	if app.settings.DEBUG or debug2:
 		logMessage(message, "DEBUG", PINK)
 
-def debug2(message) -> None: return debug(message, debug2=True)
+def debug2(message: str) -> None: return debug(message, debug2=True)
 
-def chat(message) -> None:
+def chat(message: str) -> None:
 	"""
 	Log a public chat message to stdout and to chatlog_public.txt.
 
