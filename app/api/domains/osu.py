@@ -1750,7 +1750,7 @@ async def register_account(
 
         """ bancho's Ingame Registaration """
         return ORJSONResponse(
-            content={"error": "please complete registration using the osu! website", "url": f"https://osu.{app.settings.DOMAIN}/register"},
+            content={"error": "please complete registration using the osu! website", "url": f"https://{app.settings.DOMAIN}/register"},
             status_code=status.HTTP_403_FORBIDDEN,
         )
 
