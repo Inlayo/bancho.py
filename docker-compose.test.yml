@@ -3,18 +3,18 @@ services:
 
   mysql-test:
     image: mysql:latest
-    # ports:
-    #   - ${DB_PORT}:${DB_PORT}
+    ports:
+      - ${DB_PORT}:${DB_PORT}
     environment:
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASS}
       MYSQL_DATABASE: ${DB_NAME}
       MYSQL_HOST: ${DB_HOST}
       MYSQL_PORT: ${DB_PORT}
-      MYSQL_ROOT_PASSWORD: ${DB_PASS}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS}
     volumes:
       - ./migrations/base.sql:/docker-entrypoint-initdb.d/init.sql:ro
-      - test-db-data:/var/lib/mysql
+      - .test-db-data:/var/lib/mysql
     networks:
       - test-network
     healthcheck:
@@ -25,11 +25,11 @@ services:
 
   redis-test:
     image: bitnami/redis:latest
-    # ports:
-    #   - ${REDIS_PORT}:${REDIS_PORT}
+    ports:
+      - ${REDIS_PORT}:${REDIS_PORT}
     user: root
     volumes:
-      - test-redis-data:/bitnami/redis/data
+      - .test-redis-data:/bitnami/redis/data
     networks:
       - test-network
     environment:
