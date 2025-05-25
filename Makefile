@@ -15,7 +15,7 @@ run-caddy:
 
 last?=1000
 logs:
-	docker compose logs -f bancho mysql redis --tail ${last}
+	docker compose logs -f redis mysql bancho --tail ${last}
 
 log-bancho:
 	docker compose logs -f bancho --tail 1000
