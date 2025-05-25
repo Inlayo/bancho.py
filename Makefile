@@ -5,10 +5,10 @@ build:
 	docker build -t bancho:latest .
 
 run:
-	docker compose up bancho mysql redis
+	docker compose up redis mysql bancho
 
 run-bg:
-	docker compose up -d bancho mysql redis
+	docker compose up -d redis mysql bancho
 
 run-caddy:
 	caddy run --envfile .env --config ext/Caddyfile
@@ -18,13 +18,13 @@ logs:
 	docker compose logs -f redis mysql bancho --tail ${last}
 
 log-bancho:
-	docker compose logs -f bancho --tail 1000
+	docker compose logs -f bancho --tail ${last}
 
 shell:
 	poetry shell
 
 test:
-	docker compose -f docker-compose.test.yml up -d bancho-test mysql-test redis-test
+	docker compose -f docker-compose.test.yml up -d redis-test mysql-test bancho-test
 	docker compose -f docker-compose.test.yml exec -T bancho-test /srv/root/scripts/run-tests.sh
 
 lint:
