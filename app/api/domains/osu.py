@@ -1587,7 +1587,10 @@ async def osuMarkAsRead(
 
 @router.get("/web/osu-getseasonal.php")
 async def osuSeasonal() -> Response:
-    return ORJSONResponse(app.settings.SEASONAL_BGS)
+   if app.settings.SEASONAL_BGS[0]: return ORJSONResponse(app.settings.SEASONAL_BGS)
+   else:
+        response = await app.state.services.http_client.get("https://osu.ppy.sh/web/osu-getseasonal.php")
+        return ORJSONResponse(response.json()) if response.status_code == status.HTTP_200_OK else ORJSONResponse(app.settings.SEASONAL_BGS)
 
 
 @router.get("/web/bancho_connect.php")
