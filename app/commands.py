@@ -551,24 +551,22 @@ async def _with(ctx: Context) -> str | None:
 @command(Privileges.UNRESTRICTED, aliases=["req"])
 async def request(ctx: Context) -> str | None:
     """Request a beatmap for nomination."""
-    if ctx.args:
-        return "Invalid syntax: !request"
+    if ctx.args: return "Invalid syntax: !request"
+    if ctx.player.last_np is None or time.time() >= ctx.player.last_np["timeout"]: return "Please /np a map first!"
 
-    if ctx.player.last_np is None or time.time() >= ctx.player.last_np["timeout"]:
-        return "Please /np a map first!"
+    rqs = await app.state.services.database.fetch_all("SELECT map_id FROM map_requests WHERE ACTIVE = 1 AND player_id = :uid", {"uid": ctx.player.id})
+    if len(rqs) >= 10: return f"You've reached the limit: 10 request per person. " + ' '.join(f"[osu://b/{i['map_id']} {i['map_id']}]" for i in rqs)
 
     bmap = ctx.player.last_np["bmap"]
 
-    if bmap.status in (RankedStatus.Ranked, RankedStatus.Approved):
-        return "Only not ranked maps may be requested for status change."
+    if bmap.status in (RankedStatus.Ranked, RankedStatus.Approved): return "Only not ranked maps may be requested for status change."
 
     map_requests = await map_requests_repo.fetch_all(
         map_id=bmap.id,
         player_id=ctx.player.id,
         active=True,
     )
-    if map_requests:
-        return "You already have an active nomination request for that map."
+    if map_requests: return "You already have an active nomination request for that map."
 
     await map_requests_repo.create(map_id=bmap.id, player_id=ctx.player.id, active=True)
 
@@ -595,7 +593,7 @@ async def request(ctx: Context) -> str | None:
     embed.set_timestamp()
     webhook = Webhook(webhook_url, embeds=[embed])
     asyncio.create_task(webhook.post())
-    return "Request submitted."
+    return f"Request submitted. [osu://b/{bmap.id} osu!direct]"
 
 
 @command(Privileges.UNRESTRICTED)
