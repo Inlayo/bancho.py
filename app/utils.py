@@ -158,7 +158,7 @@ def get_appropriate_stacktrace() -> list[FrameInfo]:
             "filename": Path(frame.filename).name,
             "lineno": frame.lineno,
             "charno": frame.index or 0,
-            "locals": {k: repr(v) for k, v in frame.frame.f_locals.items()},
+            "locals": {k: safe_repr(v) for k, v in frame.frame.f_locals.items()},
         }
         # reverse for python-like stacktrace
         # ordering; puts the most recent
