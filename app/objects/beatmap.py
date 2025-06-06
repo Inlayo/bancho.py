@@ -539,8 +539,9 @@ class Beatmap:
                 if res and res[0]:
                     old_status = osuapi_status
                     osuapi_status = int(res[0]["approved"])
-                    self.frozen = True
-                    log(f"{self.full_name} | osuapi_status : {RankedStatus.from_osuapi(old_status)} ({old_status}) --> {RankedStatus.from_osuapi(osuapi_status)} ({osuapi_status}) | self.frozen = {self.frozen}")
+                    if osuapi_status > 0:
+                        self.frozen = True
+                        log(f"{self.full_name} | osuapi_status : {RankedStatus.from_osuapi(old_status)} ({old_status}) --> {RankedStatus.from_osuapi(osuapi_status)} ({osuapi_status}) | self.frozen = {self.frozen}")
 
             self.status = RankedStatus.from_osuapi(osuapi_status)
 
