@@ -531,6 +531,17 @@ class Beatmap:
         # even after an update from the osu!api.
         if not getattr(self, "frozen", False):
             osuapi_status = int(osuapi_resp["approved"])
+
+            #비트맵이 언랭일때 akatsuki 랭크상태 따라감
+            if app.settings.FOLLOW_AKATSUKI_RANKEDSTATUS and osuapi_status <= 0:
+                import requests
+                res = requests.get(f"https://akatsuki.gg/api/v1/get_beatmaps?b={self.id}").json()
+                if res and res[0]:
+                    old_status = osuapi_status
+                    osuapi_status = int(res[0]["approved"])
+                    self.frozen = True
+                    log(f"{self.full_name} | osuapi_status : {RankedStatus.from_osuapi(old_status)} ({old_status}) --> {RankedStatus.from_osuapi(osuapi_status)} ({osuapi_status}) | self.frozen = {self.frozen}")
+
             self.status = RankedStatus.from_osuapi(osuapi_status)
 
         self.mode = GameMode(int(osuapi_resp["mode"]))
