@@ -68,6 +68,15 @@ LOG_WITH_COLORS = read_bool(os.environ["LOG_WITH_COLORS"])
 
 # advanced dev settings
 
+#Daum SMTP, IMAP Email
+EmailVerifyKeyLength = int(os.environ["EmailVerifyKeyLength"])
+SentEmailTimeout = int(os.environ["SentEmailTimeout"])
+SMTP_serverInfo = eval(os.environ["SMTP_serverInfo"])
+IMAP_serverInfo = eval(os.environ["IMAP_serverInfo"])
+SenderEmail = os.environ["SenderEmail"]
+SenderEmailPassword = os.environ["SenderEmailPassword"]
+DISCORD_EMAIL_LOG_WEBHOOK = os.environ["DISCORD_EMAIL_LOG_WEBHOOK"]
+
 ## WARNING touch this once you've
 ##          read through what it enables.
 ##          you could put your server at risk.
