@@ -2586,6 +2586,79 @@ async def clan_list(ctx: Context) -> str | None:
     return "\n".join(msg)
 
 
+@command(Privileges.ADMINISTRATOR, hidden=True)
+async def wipe(ctx: Context) -> str | None:
+    """Show information about a player's top 10 scores."""
+    # !wipe <mode> <player>
+    args_len = len(ctx.args)
+    if args_len != 2: return "Invalid syntax: !wipe <mode> <player>"
+
+    if ctx.args[0] not in GAMEMODE_REPR_LIST: return f'Valid gamemodes: {", ".join(GAMEMODE_REPR_LIST)}.'
+
+    if ctx.args[0] in (
+        "rx!mania",
+        "ap!taiko",
+        "ap!catch",
+        "ap!mania",
+    ): return "Impossible gamemode combination."
+
+    if not regexes.USERNAME.match(ctx.args[1]): return "Invalid username."
+
+    # find any user matching (including offline).
+    target = await app.state.sessions.players.from_cache_or_sql(name=ctx.args[1])
+    if not target: return f'"{ctx.args[1]}" not found.'
+
+    mode = GAMEMODE_REPR_LIST.index(ctx.args[0])
+
+    await app.state.services.database.execute("DELETE FROM scores WHERE userid = :user_id AND mode = :mode", {"user_id": target.id, "mode": mode})
+    await app.state.services.database.execute("REPLACE INTO stats (id, mode) VALUES (:user_id, :mode)", {"user_id": target.id, "mode": mode})
+
+    await app.state.services.redis.zrem(f"bancho:leaderboard:{mode}", target.id)
+    await app.state.services.redis.zrem(f'bancho:leaderboard:{mode}:{target.geoloc["country"]["acronym"]}', target.id)
+    target.enqueue(app.packets.notification(f"Your {GAMEMODE_REPR_LIST[mode]} has been wiped!"))
+    target.logout()
+    log_msg = f"{ctx.player} has wiped {target}'s {GAMEMODE_REPR_LIST[mode]}"
+    log(log_msg, Ansi.LYELLOW)
+    webhook_url = app.settings.DISCORD_AUDIT_LOG_WEBHOOK
+    if webhook_url:
+        webhook = Webhook(webhook_url, content=log_msg)
+        asyncio.create_task(webhook.post())
+    return f"{target.name}({target.id})'s {GAMEMODE_REPR_LIST[mode]} wipe Done! | Check [https://{app.settings.DOMAIN}/u/{target.id} Profile]"
+
+
+@command(Privileges.ADMINISTRATOR, hidden=True)
+async def fullwipe(ctx: Context) -> str | None:
+    """Show information about a player's top 10 scores."""
+    # !fullwipe <player>
+    args_len = len(ctx.args)
+    if args_len != 1: return "Invalid syntax: !fullwipe <player>"
+
+    if not regexes.USERNAME.match(ctx.args[0]): return "Invalid username."
+
+    # find any user matching (including offline).
+    target = await app.state.sessions.players.from_cache_or_sql(name=ctx.args[0])
+    if not target: return f'"{ctx.args[0]}" not found.'
+
+    await app.state.services.database.execute("DELETE FROM favourites WHERE userid = :user_id", {"user_id": target.id})
+    await app.state.services.database.execute("DELETE FROM comments WHERE userid = :user_id", {"user_id": target.id})
+    await app.state.services.database.execute("DELETE FROM ratings WHERE userid = :user_id", {"user_id": target.id})
+    await app.state.services.database.execute("DELETE FROM user_achievements WHERE userid = :user_id", {"user_id": target.id})
+    await app.state.services.database.execute("DELETE FROM scores WHERE userid = :user_id", {"user_id": target.id})
+    for mode in [0, 1, 2, 3, 4, 5, 6, 8]:
+        await app.state.services.database.execute("REPLACE INTO stats (id, mode) VALUES (:user_id, :mode)", {"user_id": target.id, "mode": mode})
+        await app.state.services.redis.zrem(f"bancho:leaderboard:{mode}", target.id)
+        await app.state.services.redis.zrem(f'bancho:leaderboard:{mode}:{target.geoloc["country"]["acronym"]}', target.id)
+    target.enqueue(app.packets.notification(f"Your account has been fullwiped!"))
+    target.logout()
+    log_msg = f"{ctx.player} has fullwiped {target}"
+    log(log_msg, Ansi.LYELLOW)
+    webhook_url = app.settings.DISCORD_AUDIT_LOG_WEBHOOK
+    if webhook_url:
+        webhook = Webhook(webhook_url, content=log_msg)
+        asyncio.create_task(webhook.post())
+    return f"{target.name}({target.id})'s fullwipe Done! | Check [https://{app.settings.DOMAIN}/u/{target.id} Profile]"
+
+
 class CommandResponse(TypedDict):
     resp: str | None
     hidden: bool
