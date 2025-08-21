@@ -8,6 +8,7 @@ import hashlib
 import random
 import secrets
 import importlib
+import threading
 from collections import defaultdict
 from collections.abc import Awaitable
 from collections.abc import Callable
@@ -64,6 +65,7 @@ from app.objects.score import Grade
 from app.objects.score import Score
 from app.objects.score import SubmissionStatus
 from app.objects import pplimit
+from app.objects.sendEmail import mailSend
 from app.repositories import clans as clans_repo
 from app.repositories import comments as comments_repo
 from app.repositories import favourites as favourites_repo
@@ -1035,19 +1037,12 @@ async def osuSubmitModularSelector(
         npl = pplimit.modeToPP(score.mode)
         if npl and score.pp > npl:
             log(f"{score.mode!r} | Restricted due to too high pp gain ({score.pp}pp/{npl}pp) | bid = [{score.bmap.id}](https://{app.settings.DOMAIN}/b/{score.bmap.id})", Ansi.LYELLOW)
-            ###await player.restrict(player, f"{score.mode!r} | Restricted due to too high pp gain ({score.pp}pp/{npl}pp) | bid = [{score.bmap.id}](https://{app.settings.DOMAIN}/b/{score.bmap.id})")
+            await player.restrict(player, f"{score.mode!r} | Restricted due to too high pp gain ({score.pp}pp/{npl}pp) | bid = [{score.bmap.id}](https://{app.settings.DOMAIN}/b/{score.bmap.id})")
 
             email = await app.state.services.database.fetch_val("SELECT email FROM users WHERE id = :uid", {"uid": player.id})
-            from app.objects.sendEmail import mailSend
-            def banEmailBody(userID: int, username: str, country: str, beatmapInfo: dict[str, object]) -> str:
-                #765 MILLION ALLSTARS - UNION!! [We are all MILLION!!] +TD(NV), HD, HR, DT, RX (100.0%)
-                temple = "US" if country != "KR" and country != "KP" and country != "JP" else country
-                with open(f"templates/autobanmail/{temple}.html", "r", encoding="utf-8") as f: body = f.read().format(userID=userID ,username=username, BI_bid=beatmapInfo["bid"], BI_beatmapInfo=beatmapInfo["beatmapInfo"], country=country)
-                return body
+            #765 MILLION ALLSTARS - UNION!! [We are all MILLION!!] +TD(NV), HD, HR, DT, RX (100.0%)
             beatmapInfo = {"beatmapInfo": f"{score.bmap.full_name} {f'+{score.mods!r}' if score.mods else ''} ({score.acc:.2f}%) {score.pp:,.2f}pp", "bid": score.bmap.id}
-            body = banEmailBody(player.id, player.name, player.geoloc['country']['acronym'].upper(), beatmapInfo)
-            #mailSend(player.name, email, f"{player.name}, Your Account's Status is Changed", body, type="AutoBan", html=True)
-            import threading
+            with open(f"templates/autobanmail/US.html", "r", encoding="utf-8") as f: body = f.read().format(userID=player.id ,username=player.name, BI_bid=beatmapInfo["bid"], BI_beatmapInfo=beatmapInfo["beatmapInfo"])
             threading.Thread(target=mailSend, args=(player.name, email, f"{player.name}, Your Account's Status is Changed", body, "AutoBan", True)).start()
 
     """ score submission charts """
