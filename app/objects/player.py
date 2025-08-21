@@ -472,7 +472,7 @@ class Player:
                 self.id,
             )
 
-        log_msg = f"{admin} restricted {self} for: {reason}."
+        log_msg = f"{admin} restricted {self} for: {reason}"
 
         log(log_msg, Ansi.LRED)
 
@@ -509,7 +509,7 @@ class Player:
                 {str(self.id): stats.pp},
             )
 
-        log_msg = f"{admin} unrestricted {self} for: {reason}."
+        log_msg = f"{admin} unrestricted {self} for: {reason}"
 
         log(log_msg, Ansi.LRED)
 
