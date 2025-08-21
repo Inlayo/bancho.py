@@ -69,6 +69,7 @@ LOG_WITH_COLORS = read_bool(os.environ["LOG_WITH_COLORS"])
 # advanced dev settings
 
 #Daum SMTP, IMAP Email
+MaxPPLimit=read_bool(os.environ["MaxPPLimit"])
 EmailVerifyKeyLength = int(os.environ["EmailVerifyKeyLength"])
 SentEmailTimeout = int(os.environ["SentEmailTimeout"])
 SMTP_serverInfo = eval(os.environ["SMTP_serverInfo"])
