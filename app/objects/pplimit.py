@@ -1,9 +1,11 @@
+#수정 시 즉시 반영됨 | Changes are reflected immediately
+
 VANILLA_OSU = 1500
 VANILLA_TAIKO = 0
 VANILLA_CATCH = 0
 VANILLA_MANIA = 0
 
-RELAX_OSU = 3500-3499
+RELAX_OSU = 3500
 RELAX_TAIKO = 0
 RELAX_CATCH = 0
 RELAX_MANIA = 0  # unused
