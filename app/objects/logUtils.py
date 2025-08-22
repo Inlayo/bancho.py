@@ -48,7 +48,7 @@ def logMessage(message: str, alertType: str = "INFO", messageColor: str = ENDC, 
 		typeColor = RED
 	elif alertType == "CHAT":
 		typeColor = BLUE
-	elif alertType == "DEBUG":
+	elif alertType == "DEBUG" or alertType == "DEBUG2":
 		typeColor = PINK
 	else:
 		typeColor = ENDC
@@ -122,7 +122,7 @@ def debug(message: str, debug2: bool=False) -> None:
 		logMessage(message, "DEBUG", PINK)
 	"""
 	if app.settings.DEBUG or debug2:
-		logMessage(message, "DEBUG", PINK)
+		logMessage(message, "DEBUG" if not debug2 else "DEBUG2", PINK)
 
 def debug2(message: str) -> None: return debug(message, debug2=True)
 
