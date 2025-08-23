@@ -35,7 +35,7 @@ create table clans
 		primary key,
 	name varchar(16) charset utf8 not null,
 	tag varchar(6) charset utf8 not null,
-	invite varchar(8) charset utf8 not null,
+	invite varchar(8) charset utf8 default null,
 	owner int not null,
 	created_at datetime not null,
 	constraint clans_name_uindex
