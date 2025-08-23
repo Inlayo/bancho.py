@@ -27,6 +27,7 @@ class ClansTable(Base):
     id = Column("id", Integer, primary_key=True, nullable=False, autoincrement=True)
     name = Column("name", String(16, collation="utf8"), nullable=False)
     tag = Column("tag", String(6, collation="utf8"), nullable=False)
+    invite = Column("invite", String(8, collation="utf8"), nullable=True)
     owner = Column("owner", Integer, nullable=False)
     created_at = Column("created_at", DateTime, nullable=False)
 
@@ -34,6 +35,7 @@ class ClansTable(Base):
         Index("clans_name_uindex", name, unique=False),
         Index("clans_owner_uindex", owner, unique=True),
         Index("clans_tag_uindex", tag, unique=True),
+        Index("clans_invite_uindex", tag, unique=True),
     )
 
 
@@ -41,6 +43,7 @@ READ_PARAMS = (
     ClansTable.id,
     ClansTable.name,
     ClansTable.tag,
+    ClansTable.invite,
     ClansTable.owner,
     ClansTable.created_at,
 )
@@ -50,6 +53,7 @@ class Clan(TypedDict):
     id: int
     name: str
     tag: str
+    invite: str
     owner: int
     created_at: datetime
 
@@ -79,10 +83,11 @@ async def fetch_one(
     id: int | None = None,
     name: str | None = None,
     tag: str | None = None,
+    invite: str | None = None,
     owner: int | None = None,
 ) -> Clan | None:
     """Fetch a single clan from the database."""
-    if id is None and name is None and tag is None and owner is None:
+    if id is None and name is None and tag is None and invite is None and owner is None:
         raise ValueError("Must provide at least one parameter.")
 
     select_stmt = select(*READ_PARAMS)
@@ -93,6 +98,8 @@ async def fetch_one(
         select_stmt = select_stmt.where(ClansTable.name == name)
     if tag is not None:
         select_stmt = select_stmt.where(ClansTable.tag == tag)
+    if invite is not None:
+        select_stmt = select_stmt.where(ClansTable.invite == invite)
     if owner is not None:
         select_stmt = select_stmt.where(ClansTable.owner == owner)
 
@@ -126,6 +133,7 @@ async def partial_update(
     id: int,
     name: str | _UnsetSentinel = UNSET,
     tag: str | _UnsetSentinel = UNSET,
+    invite: str | _UnsetSentinel = UNSET,
     owner: int | _UnsetSentinel = UNSET,
 ) -> Clan | None:
     """Update a clan in the database."""
@@ -134,6 +142,8 @@ async def partial_update(
         update_stmt = update_stmt.values(name=name)
     if not isinstance(tag, _UnsetSentinel):
         update_stmt = update_stmt.values(tag=tag)
+    if not isinstance(invite, _UnsetSentinel):
+        update_stmt = update_stmt.values(invite=invite)
     if not isinstance(owner, _UnsetSentinel):
         update_stmt = update_stmt.values(owner=owner)
 

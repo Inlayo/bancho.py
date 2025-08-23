@@ -10,6 +10,7 @@ import signal
 import time
 import traceback
 import uuid
+import string
 import threading
 from collections.abc import Awaitable
 from collections.abc import Callable
@@ -2499,6 +2500,21 @@ async def clan_info(ctx: Context) -> str | None:
         msg.append(f"[{priv_str}] {member['name']}")
 
     return "\n".join(msg)
+
+
+@clan_commands.add(Privileges.UNRESTRICTED)
+async def clan_invite(ctx: Context) -> str | None:
+    """Generate a new invite KEY."""
+    if not ctx.player.clan_id: return "You're not in a clan."
+    elif ctx.player.clan_priv == ClanPrivileges.Member: return "You have no permissions!"
+    invite = ctx.args[0] if ctx.args else ''.join(random.choices(string.ascii_letters, k=8))
+    if ctx.args and not ctx.player.priv & (Privileges.DONATOR | Privileges.STAFF): return "You need supporter privileges to create a custom clan key!"
+    if ctx.args and not 4 <= len(invite) <= 8: return "Invite key may be 4-8 characters long."
+    isExist = await clans_repo.fetch_one(invite=invite)
+    if isExist: return f"By sheer luck, the newly generated <{invite[:4]}****> key collided with clan [https://{app.settings.DOMAIN}/c/{isExist['id']} <{isExist['name']} ({isExist['id']})>]'s key. Please generate a new one!"
+    await clans_repo.partial_update(ctx.player.clan_id, invite=invite)
+    uclan = await clans_repo.fetch_one(id=ctx.player.clan_id)
+    return f"The clan key for [https://{app.settings.DOMAIN}/c/{uclan['id']} <{uclan['name']} ({uclan['id']})>] has been updated to [https://{app.settings.DOMAIN}/clans/invite/{invite} {invite}]"
 
 
 @clan_commands.add(Privileges.UNRESTRICTED)
