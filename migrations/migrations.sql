@@ -118,6 +118,7 @@ create table clans
 		primary key,
 	name varchar(16) not null,
 	tag varchar(6) not null,
+	invite varchar(8) not null,
 	owner int not null,
 	created_at datetime not null,
 	constraint clans_name_uindex
@@ -126,6 +127,8 @@ create table clans
 		unique (owner),
 	constraint clans_tag_uindex
 		unique (tag)
+	constraint clans_invite_uindex
+		unique (invite)
 );
 alter table users add clan_id int default 0 not null;
 alter table users add clan_rank tinyint(1) default 0 not null;
@@ -227,6 +230,7 @@ insert into achievements (`id`, `file`, `name`, `desc`, `cond`, `mode`) values (
 # v3.1.3
 alter table clans modify name varchar(16) charset utf8 not null;
 alter table clans modify tag varchar(6) charset utf8 not null;
+alter table clans modify invite varchar(8) charset utf8 not null;
 alter table achievements modify name varchar(128) charset utf8 not null;
 alter table achievements modify `desc` varchar(256) charset utf8 not null;
 alter table maps modify artist varchar(128) charset utf8 not null;

@@ -35,6 +35,7 @@ create table clans
 		primary key,
 	name varchar(16) charset utf8 not null,
 	tag varchar(6) charset utf8 not null,
+	invite varchar(8) charset utf8 not null,
 	owner int not null,
 	created_at datetime not null,
 	constraint clans_name_uindex
@@ -43,14 +44,8 @@ create table clans
 		unique (owner),
 	constraint clans_tag_uindex
 		unique (tag)
-);
-
-CREATE TABLE IF NOT EXISTS `clans_invites` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `clan` int NOT NULL,
-  `invite` varchar(8) NOT NULL,
-  PRIMARY KEY (`id`) USING BTREE,
-  UNIQUE KEY `clan` (`clan`) USING BTREE
+	constraint clans_invite_uindex
+		unique (invite)
 );
 
 create table client_hashes
