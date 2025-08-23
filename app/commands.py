@@ -10,6 +10,7 @@ import signal
 import time
 import traceback
 import uuid
+import threading
 from collections.abc import Awaitable
 from collections.abc import Callable
 from collections.abc import Mapping
@@ -59,6 +60,7 @@ from app.objects.match import MatchWinConditions
 from app.objects.match import SlotStatus
 from app.objects.player import Player
 from app.objects.score import SubmissionStatus
+from app.objects.sendEmail import mailSend
 from app.repositories import clans as clans_repo
 from app.repositories import logs as logs_repo
 from app.repositories import map_requests as map_requests_repo
@@ -999,6 +1001,10 @@ async def restrict(ctx: Context) -> str | None:
         reason = SHORTHAND_REASONS[reason]
 
     await target.restrict(admin=ctx.player, reason=reason)
+
+    email = await app.state.services.database.fetch_val("SELECT email FROM users WHERE id = :uid", {"uid": target.id})
+    with open(f"templates/autobanmail/US.html", "r", encoding="utf-8") as f: body = f.read().format(userID=target.id ,username=target.name, BI_bid=0, BI_beatmapInfo=reason)
+    threading.Thread(target=mailSend, args=(target.name, email, f"{target.name}, Your Account's Status is Banned", body, "Ban", True)).start()
 
     # refresh their client state
     if target.is_online:
