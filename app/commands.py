@@ -2514,6 +2514,7 @@ async def clan_invite(ctx: Context) -> str | None:
     if isExist: return f"By sheer luck, the newly generated <{invite[:4]}****> key collided with clan [https://{app.settings.DOMAIN}/c/{isExist['id']} <{isExist['name']} ({isExist['id']})>]'s key. Please generate a new one!"
     await clans_repo.partial_update(ctx.player.clan_id, invite=invite)
     uclan = await clans_repo.fetch_one(id=ctx.player.clan_id)
+    if not uclan: return "The clan existed when you ran the command, but it seems to have disappeared in the meantime."
     return f"The clan key for [https://{app.settings.DOMAIN}/c/{uclan['id']} <{uclan['name']} ({uclan['id']})>] has been updated to [https://{app.settings.DOMAIN}/clans/invite/{invite} {invite}]"
 
 
