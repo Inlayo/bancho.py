@@ -1032,7 +1032,7 @@ async def osuSubmitModularSelector(
 
     #autoBan
     verifyBadges = [b['id'] for b in await app.state.services.database.fetch_all("SELECT id FROM users WHERE priv & :whitelisted_flag", {"whitelisted_flag": Privileges.WHITELISTED})]
-    if app.settings.MaxPPLimit and score.passed and player.id not in verifyBadges:
+    if not score.player.restricted and app.settings.MaxPPLimit and score.passed and player.id not in verifyBadges:
         importlib.reload(pplimit)
         npl = pplimit.modeToPP(score.mode)
         if npl and score.pp > npl:
