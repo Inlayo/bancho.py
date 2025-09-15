@@ -3,18 +3,18 @@ services:
 
   mysql-test:
     image: mysql:latest
-    ports:
-      - ${DB_PORT}:${DB_PORT}
+    # ports:
+    #   - ${DB_PORT}:${DB_PORT}
     environment:
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASS}
       MYSQL_DATABASE: ${DB_NAME}
       MYSQL_HOST: ${DB_HOST}
-      MYSQL_PORT: ${DB_PORT}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS}
+      MYSQL_TCP_PORT: ${DB_PORT}
+      MYSQL_ROOT_PASSWORD: ${DB_PASS}
     volumes:
       - ./migrations/base.sql:/docker-entrypoint-initdb.d/init.sql:ro
-      - .test-db-data:/var/lib/mysql
+      - test-db-data:/var/lib/mysql
     networks:
       - test-network
     healthcheck:
@@ -25,11 +25,11 @@ services:
 
   redis-test:
     image: bitnami/redis:latest
-    ports:
-      - ${REDIS_PORT}:${REDIS_PORT}
+    # ports:
+    #   - ${REDIS_PORT}:${REDIS_PORT}
     user: root
     volumes:
-      - .test-redis-data:/bitnami/redis/data
+      - test-redis-data:/bitnami/redis/data
     networks:
       - test-network
     environment:
@@ -50,7 +50,7 @@ services:
     init: true
     volumes:
       - .:/srv/root
-      - .test-data:/srv/root/.data
+      - test-data:/srv/root/.data
     networks:
       - test-network
     environment:
@@ -84,9 +84,6 @@ services:
       - DISALLOW_OLD_CLIENTS=${DISALLOW_OLD_CLIENTS}
       - DISALLOW_INGAME_REGISTRATION=${DISALLOW_INGAME_REGISTRATION}
       - DISCORD_AUDIT_LOG_WEBHOOK=${DISCORD_AUDIT_LOG_WEBHOOK}
-      - DISCORD_BEATMAP_LOG_WEBHOOK=${DISCORD_BEATMAP_LOG_WEBHOOK}
-      - DISCORD_LEADERBOARD_LOG_WEBHOOK=${DISCORD_LEADERBOARD_LOG_WEBHOOK}
-      - DISCORD_RANKREQ_LOG_WEBHOOK=${DISCORD_RANKREQ_LOG_WEBHOOK}
       - AUTOMATICALLY_REPORT_PROBLEMS=${AUTOMATICALLY_REPORT_PROBLEMS}
       - LOG_WITH_COLORS=${LOG_WITH_COLORS}
       - SSL_CERT_PATH=${SSL_CERT_PATH}

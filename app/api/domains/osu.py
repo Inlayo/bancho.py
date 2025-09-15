@@ -1,13 +1,13 @@
-""" osu: handle connections from web, api, and beyond? """
+"""osu: handle connections from web, api, and beyond?"""
 
 from __future__ import annotations
 
 import asyncio
 import copy
 import hashlib
+import importlib
 import random
 import secrets
-import importlib
 import threading
 from collections import defaultdict
 from collections.abc import Awaitable
@@ -57,6 +57,7 @@ from app.discord import Webhook
 from app.logging import Ansi
 from app.logging import log
 from app.objects import models
+from app.objects import pplimit
 from app.objects.beatmap import Beatmap
 from app.objects.beatmap import RankedStatus
 from app.objects.beatmap import ensure_osu_file_is_available
@@ -64,7 +65,6 @@ from app.objects.player import Player
 from app.objects.score import Grade
 from app.objects.score import Score
 from app.objects.score import SubmissionStatus
-from app.objects import pplimit
 from app.objects.sendEmail import mailSend
 from app.repositories import clans as clans_repo
 from app.repositories import comments as comments_repo
@@ -769,13 +769,13 @@ async def osuSubmitModularSelector(
                     if prev_n1:
                         if score.player.id != prev_n1["id"]:
                             ann.append(
-                                f"(Previous #1: [https://osu.{app.settings.DOMAIN}/u/"
+                                f"(Previous #1: [https://{app.settings.DOMAIN}/u/"
                                 "{id} {name}])".format(
                                     id=prev_n1["id"],
                                     name=prev_n1["name"],
                                 ),
                             )
-                            PreviousMsg = f"(Previous #1: [{prev_n1['name']}](https://osu.{app.settings.DOMAIN}/u/{prev_n1['id']}))"
+                            PreviousMsg = f"(Previous #1: [{prev_n1['name']}](https://{app.settings.DOMAIN}/u/{prev_n1['id']}))"
 
                     assert announce_chan is not None
                     announce_chan.send(" ".join(ann), sender=score.player, to_self=True)
@@ -804,13 +804,13 @@ async def osuSubmitModularSelector(
 
                         embed = Embed(
                             title="Beatmap link",
-                            description=f"{player.name} ({player.id}) #1 on https://osu.{app.settings.DOMAIN}/b/{bmap.id}",
-                            url=f"https://osu.{app.settings.DOMAIN}/b/{bmap.id}",
+                            description=f"{player.name} ({player.id}) #1 on https://{app.settings.DOMAIN}/b/{bmap.id}",
+                            url=f"https://{app.settings.DOMAIN}/b/{bmap.id}",
                             color=color,
                         )
                         embed.set_author(
                             name=f"{player.name}",
-                            url=f"https://osu.{app.settings.DOMAIN}/u/{player.id}",
+                            url=f"https://{app.settings.DOMAIN}/u/{player.id}",
                             icon_url=f"https://a.{app.settings.DOMAIN}/{player.id}",
                         )
                         embed.set_thumbnail(url=ranked_img_url)
@@ -1030,22 +1030,58 @@ async def osuSubmitModularSelector(
     # update their recent score
     score.player.recent_scores[score.mode] = score
 
-    #autoBan
-    verifyBadges = [b['id'] for b in await app.state.services.database.fetch_all("SELECT id FROM users WHERE priv & :whitelisted_flag", {"whitelisted_flag": Privileges.WHITELISTED})]
-    if not score.player.restricted and app.settings.MaxPPLimit and score.passed and player.id not in verifyBadges:
+    # autoBan
+    verifyBadges = [
+        b["id"]
+        for b in await app.state.services.database.fetch_all(
+            "SELECT id FROM users WHERE priv & :whitelisted_flag",
+            {"whitelisted_flag": Privileges.WHITELISTED},
+        )
+    ]
+    if (
+        not score.player.restricted
+        and app.settings.MaxPPLimit
+        and score.passed
+        and player.id not in verifyBadges
+    ):
         importlib.reload(pplimit)
         npl = pplimit.modeToPP(score.mode)
         if npl and score.pp > npl:
-            log(f"{score.mode!r} | Restricted due to too high pp gain ({score.pp}pp/{npl}pp) | bid = {score.bmap.id}", Ansi.LYELLOW)
+            log(
+                f"{score.mode!r} | Restricted due to too high pp gain ({score.pp}pp/{npl}pp) | bid = {score.bmap.id}",
+                Ansi.LYELLOW,
+            )
             await player.restrict(
                 admin=app.state.sessions.bot,
-                reason=f"{score.mode!r} | Restricted due to too high pp gain ({score.pp}pp/{npl}pp) | bid = [{score.bmap.id}](https://{app.settings.DOMAIN}/b/{score.bmap.id})"
+                reason=f"{score.mode!r} | Restricted due to too high pp gain ({score.pp}pp/{npl}pp) | bid = [{score.bmap.id}](https://{app.settings.DOMAIN}/b/{score.bmap.id})",
             )
-            email = await app.state.services.database.fetch_val("SELECT email FROM users WHERE id = :uid", {"uid": player.id})
-            #765 MILLION ALLSTARS - UNION!! [We are all MILLION!!] +TD(NV), HD, HR, DT, RX (100.0%)
-            beatmapInfo = {"beatmapInfo": f"{score.bmap.full_name} {f'+{score.mods!r}' if score.mods else ''} ({score.acc:.2f}%) {score.pp:,.2f}pp/{npl}pp", "bid": score.bmap.id}
-            with open(f"templates/autobanmail/US.html", "r", encoding="utf-8") as f: body = f.read().format(userID=player.id ,username=player.name, BI_bid=beatmapInfo["bid"], BI_beatmapInfo=beatmapInfo["beatmapInfo"])
-            threading.Thread(target=mailSend, args=(player.name, email, f"{player.name}, Your Account's Status is Changed", body, "AutoBan", True)).start()
+            email = await app.state.services.database.fetch_val(
+                "SELECT email FROM users WHERE id = :uid",
+                {"uid": player.id},
+            )
+            # 765 MILLION ALLSTARS - UNION!! [We are all MILLION!!] +TD(NV), HD, HR, DT, RX (100.0%)
+            beatmapInfo = {
+                "beatmapInfo": f"{score.bmap.full_name} {f'+{score.mods!r}' if score.mods else ''} ({score.acc:.2f}%) {score.pp:,.2f}pp/{npl}pp",
+                "bid": score.bmap.id,
+            }
+            with open(f"templates/autobanmail/US.html", encoding="utf-8") as f:
+                body = f.read().format(
+                    userID=player.id,
+                    username=player.name,
+                    BI_bid=beatmapInfo["bid"],
+                    BI_beatmapInfo=beatmapInfo["beatmapInfo"],
+                )
+            threading.Thread(
+                target=mailSend,
+                args=(
+                    player.name,
+                    email,
+                    f"{player.name}, Your Account's Status is Changed",
+                    body,
+                    "AutoBan",
+                    True,
+                ),
+            ).start()
 
     """ score submission charts """
 
@@ -1608,10 +1644,17 @@ async def osuMarkAsRead(
 
 @router.get("/web/osu-getseasonal.php")
 async def osuSeasonal() -> Response:
-   if app.settings.SEASONAL_BGS[0]: return ORJSONResponse(app.settings.SEASONAL_BGS)
-   else:
-        response = await app.state.services.http_client.get("https://osu.ppy.sh/web/osu-getseasonal.php")
-        return ORJSONResponse(response.json()) if response.status_code == status.HTTP_200_OK else ORJSONResponse(app.settings.SEASONAL_BGS)
+    if app.settings.SEASONAL_BGS[0]:
+        return ORJSONResponse(app.settings.SEASONAL_BGS)
+    else:
+        response = await app.state.services.http_client.get(
+            "https://osu.ppy.sh/web/osu-getseasonal.php",
+        )
+        return (
+            ORJSONResponse(response.json())
+            if response.status_code == status.HTTP_200_OK
+            else ORJSONResponse(app.settings.SEASONAL_BGS)
+        )
 
 
 @router.get("/web/bancho_connect.php")
@@ -1767,14 +1810,17 @@ async def register_account(
 
     # Disable in-game registration if enabled
     if app.settings.DISALLOW_INGAME_REGISTRATION:
-        """ return ORJSONResponse(
+        """return ORJSONResponse(
             content=INGAME_REGISTRATION_DISALLOWED_ERROR,
             status_code=status.HTTP_400_BAD_REQUEST,
-        ) """
+        )"""
 
         """ bancho's Ingame Registaration """
         return ORJSONResponse(
-            content={"error": "please complete registration using the osu! website", "url": f"https://{app.settings.DOMAIN}/register"},
+            content={
+                "error": "please complete registration using the osu! website",
+                "url": f"https://{app.settings.DOMAIN}/register",
+            },
             status_code=status.HTTP_403_FORBIDDEN,
         )
 

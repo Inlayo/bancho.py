@@ -7,11 +7,11 @@ import pprint
 import random
 import secrets
 import signal
+import string
+import threading
 import time
 import traceback
 import uuid
-import string
-import threading
 from collections.abc import Awaitable
 from collections.abc import Callable
 from collections.abc import Mapping
@@ -1003,9 +1003,28 @@ async def restrict(ctx: Context) -> str | None:
 
     await target.restrict(admin=ctx.player, reason=reason)
 
-    email = await app.state.services.database.fetch_val("SELECT email FROM users WHERE id = :uid", {"uid": target.id})
-    with open(f"templates/autobanmail/US.html", "r", encoding="utf-8") as f: body = f.read().format(userID=target.id ,username=target.name, BI_bid=0, BI_beatmapInfo=reason)
-    threading.Thread(target=mailSend, args=(target.name, email, f"{target.name}, Your Account's Status is Banned", body, "Ban", True)).start()
+    email = await app.state.services.database.fetch_val(
+        "SELECT email FROM users WHERE id = :uid",
+        {"uid": target.id},
+    )
+    with open(f"templates/autobanmail/US.html", encoding="utf-8") as f:
+        body = f.read().format(
+            userID=target.id,
+            username=target.name,
+            BI_bid=0,
+            BI_beatmapInfo=reason,
+        )
+    threading.Thread(
+        target=mailSend,
+        args=(
+            target.name,
+            email,
+            f"{target.name}, Your Account's Status is Banned",
+            body,
+            "Ban",
+            True,
+        ),
+    ).start()
 
     # refresh their client state
     if target.is_online:
@@ -2505,16 +2524,24 @@ async def clan_info(ctx: Context) -> str | None:
 @clan_commands.add(Privileges.UNRESTRICTED)
 async def clan_invite(ctx: Context) -> str | None:
     """Generate a new invite KEY."""
-    if not ctx.player.clan_id: return "You're not in a clan."
-    elif ctx.player.clan_priv == ClanPrivileges.Member: return "You have no permissions!"
-    invite = ctx.args[0] if ctx.args else ''.join(random.choices(string.ascii_letters, k=8))
-    if ctx.args and not ctx.player.priv & (Privileges.DONATOR | Privileges.STAFF): return "You need supporter privileges to create a custom clan key!"
-    if ctx.args and not 4 <= len(invite) <= 8: return "Invite key may be 4-8 characters long."
+    if not ctx.player.clan_id:
+        return "You're not in a clan."
+    elif ctx.player.clan_priv == ClanPrivileges.Member:
+        return "You have no permissions!"
+    invite = (
+        ctx.args[0] if ctx.args else "".join(random.choices(string.ascii_letters, k=8))
+    )
+    if ctx.args and not ctx.player.priv & (Privileges.DONATOR | Privileges.STAFF):
+        return "You need supporter privileges to create a custom clan key!"
+    if ctx.args and not 4 <= len(invite) <= 8:
+        return "Invite key may be 4-8 characters long."
     isExist = await clans_repo.fetch_one(invite=invite)
-    if isExist: return f"By sheer luck, the newly generated <{invite[:4]}****> key collided with clan [https://{app.settings.DOMAIN}/c/{isExist['id']} <{isExist['name']} ({isExist['id']})>]'s key. Please generate a new one!"
+    if isExist:
+        return f"By sheer luck, the newly generated <{invite[:4]}****> key collided with clan [https://{app.settings.DOMAIN}/c/{isExist['id']} <{isExist['name']} ({isExist['id']})>]'s key. Please generate a new one!"
     await clans_repo.partial_update(ctx.player.clan_id, invite=invite)
     uclan = await clans_repo.fetch_one(id=ctx.player.clan_id)
-    if not uclan: return "The clan existed when you ran the command, but it seems to have disappeared in the meantime."
+    if not uclan:
+        return "The clan existed when you ran the command, but it seems to have disappeared in the meantime."
     return f"The clan key for [https://{app.settings.DOMAIN}/c/{uclan['id']} <{uclan['name']} ({uclan['id']})>] has been updated to [https://{app.settings.DOMAIN}/clans/invite/{invite} {invite}]"
 
 
@@ -2611,34 +2638,50 @@ async def clan_list(ctx: Context) -> str | None:
 
 @command(Privileges.ADMINISTRATOR, hidden=True)
 async def wipe(ctx: Context) -> str | None:
-    """Show information about a player's top 10 scores."""
+    """wipe player's scores"""
     # !wipe <mode> <player>
     args_len = len(ctx.args)
-    if args_len != 2: return "Invalid syntax: !wipe <mode> <player>"
+    if args_len != 2:
+        return "Invalid syntax: !wipe <mode> <player>"
 
-    if ctx.args[0] not in GAMEMODE_REPR_LIST: return f'Valid gamemodes: {", ".join(GAMEMODE_REPR_LIST)}.'
+    if ctx.args[0] not in GAMEMODE_REPR_LIST:
+        return f'Valid gamemodes: {", ".join(GAMEMODE_REPR_LIST)}.'
 
     if ctx.args[0] in (
         "rx!mania",
         "ap!taiko",
         "ap!catch",
         "ap!mania",
-    ): return "Impossible gamemode combination."
+    ):
+        return "Impossible gamemode combination."
 
-    if not regexes.USERNAME.match(ctx.args[1]): return "Invalid username."
+    if not regexes.USERNAME.match(ctx.args[1]):
+        return "Invalid username."
 
     # find any user matching (including offline).
     target = await app.state.sessions.players.from_cache_or_sql(name=ctx.args[1])
-    if not target: return f'"{ctx.args[1]}" not found.'
+    if not target:
+        return f'"{ctx.args[1]}" not found.'
 
     mode = GAMEMODE_REPR_LIST.index(ctx.args[0])
 
-    await app.state.services.database.execute("DELETE FROM scores WHERE userid = :user_id AND mode = :mode", {"user_id": target.id, "mode": mode})
-    await app.state.services.database.execute("REPLACE INTO stats (id, mode) VALUES (:user_id, :mode)", {"user_id": target.id, "mode": mode})
+    await app.state.services.database.execute(
+        "DELETE FROM scores WHERE userid = :user_id AND mode = :mode",
+        {"user_id": target.id, "mode": mode},
+    )
+    await app.state.services.database.execute(
+        "REPLACE INTO stats (id, mode) VALUES (:user_id, :mode)",
+        {"user_id": target.id, "mode": mode},
+    )
 
     await app.state.services.redis.zrem(f"bancho:leaderboard:{mode}", target.id)
-    await app.state.services.redis.zrem(f'bancho:leaderboard:{mode}:{target.geoloc["country"]["acronym"]}', target.id)
-    target.enqueue(app.packets.notification(f"Your {GAMEMODE_REPR_LIST[mode]} has been wiped!"))
+    await app.state.services.redis.zrem(
+        f'bancho:leaderboard:{mode}:{target.geoloc["country"]["acronym"]}',
+        target.id,
+    )
+    target.enqueue(
+        app.packets.notification(f"Your {GAMEMODE_REPR_LIST[mode]} has been wiped!"),
+    )
     target.logout()
     log_msg = f"{ctx.player} has wiped {target}'s {GAMEMODE_REPR_LIST[mode]}"
     log(log_msg, Ansi.LYELLOW)
@@ -2651,26 +2694,50 @@ async def wipe(ctx: Context) -> str | None:
 
 @command(Privileges.ADMINISTRATOR, hidden=True)
 async def fullwipe(ctx: Context) -> str | None:
-    """Show information about a player's top 10 scores."""
+    """fullwipe player's scores"""
     # !fullwipe <player>
     args_len = len(ctx.args)
-    if args_len != 1: return "Invalid syntax: !fullwipe <player>"
+    if args_len != 1:
+        return "Invalid syntax: !fullwipe <player>"
 
-    if not regexes.USERNAME.match(ctx.args[0]): return "Invalid username."
+    if not regexes.USERNAME.match(ctx.args[0]):
+        return "Invalid username."
 
     # find any user matching (including offline).
     target = await app.state.sessions.players.from_cache_or_sql(name=ctx.args[0])
-    if not target: return f'"{ctx.args[0]}" not found.'
+    if not target:
+        return f'"{ctx.args[0]}" not found.'
 
-    await app.state.services.database.execute("DELETE FROM favourites WHERE userid = :user_id", {"user_id": target.id})
-    await app.state.services.database.execute("DELETE FROM comments WHERE userid = :user_id", {"user_id": target.id})
-    await app.state.services.database.execute("DELETE FROM ratings WHERE userid = :user_id", {"user_id": target.id})
-    await app.state.services.database.execute("DELETE FROM user_achievements WHERE userid = :user_id", {"user_id": target.id})
-    await app.state.services.database.execute("DELETE FROM scores WHERE userid = :user_id", {"user_id": target.id})
+    await app.state.services.database.execute(
+        "DELETE FROM favourites WHERE userid = :user_id",
+        {"user_id": target.id},
+    )
+    await app.state.services.database.execute(
+        "DELETE FROM comments WHERE userid = :user_id",
+        {"user_id": target.id},
+    )
+    await app.state.services.database.execute(
+        "DELETE FROM ratings WHERE userid = :user_id",
+        {"user_id": target.id},
+    )
+    await app.state.services.database.execute(
+        "DELETE FROM user_achievements WHERE userid = :user_id",
+        {"user_id": target.id},
+    )
+    await app.state.services.database.execute(
+        "DELETE FROM scores WHERE userid = :user_id",
+        {"user_id": target.id},
+    )
     for mode in [0, 1, 2, 3, 4, 5, 6, 8]:
-        await app.state.services.database.execute("REPLACE INTO stats (id, mode) VALUES (:user_id, :mode)", {"user_id": target.id, "mode": mode})
+        await app.state.services.database.execute(
+            "REPLACE INTO stats (id, mode) VALUES (:user_id, :mode)",
+            {"user_id": target.id, "mode": mode},
+        )
         await app.state.services.redis.zrem(f"bancho:leaderboard:{mode}", target.id)
-        await app.state.services.redis.zrem(f'bancho:leaderboard:{mode}:{target.geoloc["country"]["acronym"]}', target.id)
+        await app.state.services.redis.zrem(
+            f'bancho:leaderboard:{mode}:{target.geoloc["country"]["acronym"]}',
+            target.id,
+        )
     target.enqueue(app.packets.notification(f"Your account has been fullwiped!"))
     target.logout()
     log_msg = f"{ctx.player} has fullwiped {target}"

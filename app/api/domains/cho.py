@@ -1,4 +1,4 @@
-""" cho: handle cho packets from the osu! client """
+"""cho: handle cho packets from the osu! client"""
 
 from __future__ import annotations
 
@@ -168,14 +168,16 @@ async def bancho_view_matches() -> Response:
 <!DOCTYPE html>
 <body style="font-family: monospace;  white-space: pre-wrap;"><a href="/">back</a>
 matches:
-{new_line.join(
-    f'''{(ON_GOING if m.in_progress else IDLE):<{max_status_length}} ({m.id:>{match_id_max_length}}): {m.name}
+{
+            new_line.join(
+                f'''{(ON_GOING if m.in_progress else IDLE):<{max_status_length}} ({m.id:>{match_id_max_length}}): {m.name}
 -- '''
-    + f"{new_line}-- ".join([
-        f'{BEATMAP:<{max_properties_length}}: {m.map_name}',
-        f'{HOST:<{max_properties_length}}: <{m.host.id}> {m.host.safe_name}'
-    ]) for m in matches
-)}
+                + f"{new_line}-- ".join([
+                    f'{BEATMAP:<{max_properties_length}}: {m.map_name}',
+                    f'{HOST:<{max_properties_length}}: <{m.host.id}> {m.host.safe_name}',
+                ]) for m in matches
+            )
+        }
 </body>
 </html>""",
     )
@@ -481,11 +483,6 @@ RESTRICTED_MSG = (
 
 # WELCOME_NOTIFICATION = app.packets.notification(
 #    f"Welcome back to {BASE_DOMAIN}!\nRunning bancho.py v{app.settings.VERSION}.",
-# )
-
-# OFFLINE_NOTIFICATION = app.packets.notification(
-#    "The server is currently running in offline mode; "
-#    "some features will be unavailable.",
 # )
 
 
@@ -1623,9 +1620,7 @@ class MatchChangeSettings(BasePacket):
         elif player.match.map_id == -1:
             if player.match.prev_map_id != self.match_data.map_id:
                 # new map has been chosen, send to match chat.
-                map_url = (
-                    f"https://osu.{app.settings.DOMAIN}/b/{self.match_data.map_id}"
-                )
+                map_url = f"https://{app.settings.DOMAIN}/b/{self.match_data.map_id}"
                 map_embed = f"[{map_url} {self.match_data.map_name}]"
                 player.match.chat.send_bot(f"Selected: {map_embed}.")
 
