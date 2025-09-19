@@ -1,4 +1,6 @@
-#수정 시 즉시 반영됨 | Changes are reflected immediately
+# 수정 시 즉시 반영됨 | Changes are reflected immediately
+
+from __future__ import annotations
 
 VANILLA_OSU = 1500
 VANILLA_TAIKO = 0
@@ -15,4 +17,19 @@ AUTOPILOT_TAIKO = 0  # unused
 AUTOPILOT_CATCH = 0  # unused
 AUTOPILOT_MANIA = 0  # unused
 
-def modeToPP(mode: int) -> int: return [VANILLA_OSU, VANILLA_TAIKO, VANILLA_CATCH, VANILLA_MANIA, RELAX_OSU, RELAX_TAIKO, RELAX_CATCH, RELAX_MANIA, AUTOPILOT_OSU, AUTOPILOT_TAIKO, AUTOPILOT_CATCH, AUTOPILOT_MANIA][mode]
+
+def modeToPP(mode: int) -> int:
+    return [
+        VANILLA_OSU,
+        VANILLA_TAIKO,
+        VANILLA_CATCH,
+        VANILLA_MANIA,
+        RELAX_OSU,
+        RELAX_TAIKO,
+        RELAX_CATCH,
+        RELAX_MANIA,
+        AUTOPILOT_OSU,
+        AUTOPILOT_TAIKO,
+        AUTOPILOT_CATCH,
+        AUTOPILOT_MANIA,
+    ][mode]

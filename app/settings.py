@@ -38,7 +38,7 @@ MIRROR_DOWNLOAD_ENDPOINT = os.environ["MIRROR_DOWNLOAD_ENDPOINT"]
 
 COMMAND_PREFIX = os.environ["COMMAND_PREFIX"]
 
-FOLLOW_AKATSUKI_RANKEDSTATUS=read_bool(os.environ["FOLLOW_AKATSUKI_RANKEDSTATUS"])
+FOLLOW_AKATSUKI_RANKEDSTATUS = read_bool(os.environ["FOLLOW_AKATSUKI_RANKEDSTATUS"])
 SEASONAL_BGS = read_list(os.environ["SEASONAL_BGS"])
 
 MENU_ICON_URL = os.environ["MENU_ICON_URL"]
@@ -68,8 +68,8 @@ LOG_WITH_COLORS = read_bool(os.environ["LOG_WITH_COLORS"])
 
 # advanced dev settings
 
-#Daum SMTP, IMAP Email
-MaxPPLimit=read_bool(os.environ["MaxPPLimit"])
+# Daum SMTP, IMAP Email
+MaxPPLimit = read_bool(os.environ["MaxPPLimit"])
 EmailVerifyKeyLength = int(os.environ["EmailVerifyKeyLength"])
 SentEmailTimeout = int(os.environ["SentEmailTimeout"])
 SMTP_serverInfo = eval(os.environ["SMTP_serverInfo"])

@@ -56,9 +56,13 @@ class Mods(IntFlag):
             if self.value & mod:
                 mod_str.append(_dict[mod])
 
-        #DTNC, SDPF 로직
-        if "DT" in mod_str and "NC" in mod_str: mod_str.remove("NC"); mod_str[mod_str.index("DT")] = "NC"
-        if "SD" in mod_str and "PF" in mod_str: mod_str.remove("PF"); mod_str[mod_str.index("SD")] = "PF"
+        # DTNC, SDPF 로직
+        if "DT" in mod_str and "NC" in mod_str:
+            mod_str.remove("NC")
+            mod_str[mod_str.index("DT")] = "NC"
+        if "SD" in mod_str and "PF" in mod_str:
+            mod_str.remove("PF")
+            mod_str[mod_str.index("SD")] = "PF"
 
         return "".join(mod_str)
 
@@ -133,9 +137,11 @@ class Mods(IntFlag):
         mods = cls.NOMOD
         _dict = modstr2mod_dict  # global
 
-        #DTNC, SDPF 로직
-        if "NC" in s and "DT" not in s: s += "DT"
-        if "PF" in s and "SD" not in s: s += "SD"
+        # DTNC, SDPF 로직
+        if "NC" in s and "DT" not in s:
+            s += "DT"
+        if "PF" in s and "SD" not in s:
+            s += "SD"
 
         # split into 2 character chunks
         mod_strs = [s[idx : idx + 2].upper() for idx in range(0, len(s), 2)]
