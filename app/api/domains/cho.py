@@ -1216,6 +1216,7 @@ class SendPrivateMessage(BasePacket):
             if target.is_online:
                 target.send(msg, sender=player)
             else:
+                pass
                 # inform user they're offline, but
                 # will receive the mail @ next login.
                 # player.enqueue(
