@@ -1,21 +1,35 @@
-/.vscode
+# python
 __pycache__/
-/config.py
-/.data
-_testing/
+*.pyc
+*.pyo
+*.pyd
 *.lprof
-ext/GeoLite2-City.mmdb
-.env
-tools/migrate_v420/go.sum
-tools/migrate_v420/scoreMigrator
+
+# virtual environment
 .venv/
+venv/
+
+# env / config
+.env
+config.py
+
+# caches
 .mypy_cache/
 .pytest_cache/
-ext/nginx.conf
-tools/cf_records.txt
-/.db-data/
-/.redis-data/
-poetry.toml
 .coverage
-logging.yaml
-logs.log
+
+# logs
+*.log
+
+# local data / runtime
+.data/
+.db-data/
+.redis-data/
+
+# external / tools / testing
+ext/
+tools/
+_testing/
+
+# poetry
+poetry.toml
