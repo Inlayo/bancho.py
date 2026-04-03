@@ -40,7 +40,7 @@ from app.constants.privileges import Privileges
 from app.logging import Ansi
 from app.logging import get_timestamp
 from app.logging import log
-from app.logging import magnitude_fmt_time
+# from app.logging import magnitude_fmt_time
 from app.objects.beatmap import Beatmap
 from app.objects.beatmap import ensure_osu_file_is_available
 from app.objects.channel import Channel
@@ -1304,8 +1304,8 @@ class SendPrivateMessage(BasePacket):
                                 )
                             )
 
-                            elapsed = time.time_ns() - pp_calc_st
-                            resp_msg += f" | Elapsed: {magnitude_fmt_time(elapsed)}"
+                            # elapsed = time.time_ns() - pp_calc_st
+                            # resp_msg += f" | Elapsed: {magnitude_fmt_time(elapsed)}"
                     else:
                         resp_msg = "Could not find map."
 
