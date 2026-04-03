@@ -100,15 +100,27 @@ async def bancho_http_handler() -> Response:
     return HTMLResponse(
         f"""
 <!DOCTYPE html>
-<body style="font-family: monospace; white-space: pre-wrap;">Running bancho.py v{app.settings.VERSION}
+<body style="font-family: monospace; white-space: pre-wrap; background:#222; color:#fff;">
+<marquee style="white-space:pre; width:30%;" direction="right">
+<pre style="margin:0;">
+                 .  o ..
+                 o . o o.o
+                      ...oo
+                        __[]__
+                     __|_o_o_o\__
+                     \ "'"'"'"'"/
+                      \. ..  . /
+                 ^^^^^^^^^^^^^^^^^^^^
+</pre>
+</marquee>
 
-<a href="online">{len(players)} online players</a>
-<a href="matches">{len(matches)} matches</a>
+<a href="online" style="color:#fff; text-decoration:none;">{len(players)} online players</a>
+<a href="matches" style="color:#fff; text-decoration:none;">{len(matches)} matches</a>
 
 <b>packets handled ({len(packets)})</b>
 {new_line.join([f"{packet.name} ({packet.value})" for packet in packets])}
 
-<a href="https://github.com/osuAkatsuki/bancho.py">Source code</a>
+<a href="https://github.com/Inlayo/bancho.py" style="color:#fff; text-decoration:none;">Source code</a>
 </body>
 </html>""",
     )
@@ -132,7 +144,7 @@ async def bancho_view_online_users() -> Response:
     return HTMLResponse(
         f"""
 <!DOCTYPE html>
-<body style="font-family: monospace;  white-space: pre-wrap;"><a href="/">back</a>
+<body style="font-family: monospace;  white-space: pre-wrap; background:#222; color:#fff;"><a href="/">back</a>
 users:
 {new_line.join([f"({p.id:>{id_max_length}}): {p.safe_name}" for p in players])}
 bots:
@@ -164,7 +176,7 @@ async def bancho_view_matches() -> Response:
     return HTMLResponse(
         f"""
 <!DOCTYPE html>
-<body style="font-family: monospace;  white-space: pre-wrap;"><a href="/">back</a>
+<body style="font-family: monospace;  white-space: pre-wrap; background:#222; color:#fff;"><a href="/">back</a>
 matches:
 {new_line.join(
     f'''{(ON_GOING if m.in_progress else IDLE):<{max_status_length}} ({m.id:>{match_id_max_length}}): {m.name}
