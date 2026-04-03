@@ -509,7 +509,7 @@ def parse_login_data(data: bytes) -> LoginData:
         username,
         password_md5,
         remainder,
-    ) = data.decode().split("\n", maxsplit=2)
+    ) = data.decode('utf-8').split("\n", maxsplit=2)
 
     (
         osu_version,
