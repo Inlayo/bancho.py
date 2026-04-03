@@ -52,7 +52,7 @@ async def api_get_beatmaps(**params: Any) -> BeatmapApiResponse:
         log(f"Doing api (getbeatmaps) request {params}", Ansi.LMAGENTA)
 
     # Try Akatsuki API first
-    akatsuki_url = "https://api.akatsuki.gg/v1/beatmaps"
+    akatsuki_url = "https://akatsuki.gg/api/v1/beatmaps"
     akatsuki_params = {}
 
     # Convert params to akatsuki format
