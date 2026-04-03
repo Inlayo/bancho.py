@@ -373,8 +373,8 @@ create index users_country_index
 	on users (country);
 
 insert into users (id, name, safe_name, priv, country, silence_end, email, pw_bcrypt, creation_time, latest_activity)
-values (1, 'BanchoBot', 'banchobot', 1, 'ca', 0, 'bot@akatsuki.pw',
-        '_______________________my_cool_bcrypt_______________________', UNIX_TIMESTAMP(), UNIX_TIMESTAMP());
+values (1, 'BanchoBot', 'banchobot', 1, 'xx', 0, 'bot@inlayo.com',
+        'banchobot', UNIX_TIMESTAMP(), UNIX_TIMESTAMP());
 
 INSERT INTO stats (id, mode) VALUES (1, 0); # vn!std
 INSERT INTO stats (id, mode) VALUES (1, 1); # vn!taiko
@@ -396,10 +396,6 @@ insert into channels (name, topic, read_priv, write_priv, auto_join)
 values ('#osu', 'General discussion.', 1, 2, true),
 	   ('#announce', 'Exemplary performance and public announcements.', 1, 24576, true),
 	   ('#lobby', 'Multiplayer lobby discussion room.', 1, 2, false),
-	   ('#supporter', 'General discussion for supporters.', 48, 48, false),
-	   ('#staff', 'General discussion for staff members.', 28672, 28672, true),
-	   ('#admin', 'General discussion for administrators.', 24576, 24576, true),
-	   ('#dev', 'General discussion for developers.', 16384, 16384, true);
 
 insert into achievements (id, file, name, `desc`, cond) values (1, 'osu-skill-pass-1', 'Rising Star', 'Can''t go forward without the first steps.', '(score.mods & 1 == 0) and 1 <= score.sr < 2 and mode_vn == 0');
 insert into achievements (id, file, name, `desc`, cond) values (2, 'osu-skill-pass-2', 'Constellation Prize', 'Definitely not a consolation prize. Now things start getting hard!', '(score.mods & 1 == 0) and 2 <= score.sr < 3 and mode_vn == 0');
