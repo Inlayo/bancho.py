@@ -3,8 +3,8 @@ services:
 
   mysql:
     image: mysql:9.4.0
-    # ports:
-    #   - ${DB_PORT}:${DB_PORT}
+    ports:
+      - ${DB_PORT}:${DB_PORT}
     environment:
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASS}
@@ -14,7 +14,7 @@ services:
       MYSQL_RANDOM_ROOT_PASSWORD: "true"
     volumes:
       - ./migrations/base.sql:/docker-entrypoint-initdb.d/init.sql:ro
-      - db-data:/var/lib/mysql
+      - .db-data:/var/lib/mysql
     healthcheck:
       test: '/usr/bin/mysql --user=$$MYSQL_USER --password=$$MYSQL_PASSWORD --execute "SHOW DATABASES;"'
       interval: 2s
@@ -25,9 +25,11 @@ services:
     image: redis:8.2.2
     # ports:
     #   - ${REDIS_PORT}:${REDIS_PORT}
+    environment:
+      - REDIS_PASS=${REDIS_PASS}
     user: root
     volumes:
-      - redis-data:/data
+      - .redis-data:/data
     command:
       - sh
       - -c
@@ -63,7 +65,7 @@ services:
     init: true
     volumes:
       - .:/srv/root
-      - data:/srv/root/.data
+      - .data:/srv/root/.data
     environment:
       - APP_HOST=${APP_HOST}
       - APP_PORT=${APP_PORT}
@@ -101,7 +103,7 @@ services:
       - SSL_CERT_PATH=${SSL_CERT_PATH}
       - SSL_KEY_PATH=${SSL_KEY_PATH}
       - DEVELOPER_MODE=${DEVELOPER_MODE}
-      - DB_USE_SSL=${DB_USE_SSL}
+      # - DB_USE_SSL=${DB_USE_SSL}
 
 volumes:
   data:

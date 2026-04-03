@@ -3,8 +3,8 @@ services:
 
   mysql-test:
     image: mysql:9.4.0
-    # ports:
-    #   - ${DB_PORT}:${DB_PORT}
+    ports:
+      - ${DB_PORT}:${DB_PORT}
     environment:
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASS}
@@ -14,22 +14,22 @@ services:
       MYSQL_ROOT_PASSWORD: ${DB_PASS}
     volumes:
       - ./migrations/base.sql:/docker-entrypoint-initdb.d/init.sql:ro
-      - test-db-data:/var/lib/mysql
+      - .test-db-data:/var/lib/mysql
     networks:
       - test-network
     healthcheck:
-      test: "/usr/bin/mysql --user=$$MYSQL_USER --password=$$MYSQL_PASSWORD --execute \"SHOW DATABASES;\""
+      test: '/usr/bin/mysql --user=$$MYSQL_USER --password=$$MYSQL_PASSWORD --execute "SHOW DATABASES;"'
       interval: 2s
       timeout: 20s
       retries: 10
 
   redis-test:
     image: redis:8.2.2
-    # ports:
-    #   - ${REDIS_PORT}:${REDIS_PORT}
+    ports:
+      - ${REDIS_PORT}:${REDIS_PORT}
     user: root
     volumes:
-      - test-redis-data:/data
+      - .test-redis-data:/data
     networks:
       - test-network
     command:
@@ -56,7 +56,7 @@ services:
     init: true
     volumes:
       - .:/srv/root
-      - test-data:/srv/root/.data
+      - .test-data:/srv/root/.data
     networks:
       - test-network
     environment:
