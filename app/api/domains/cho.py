@@ -208,8 +208,8 @@ async def bancho_handler(
         # tell their client to reconnect immediately.
         return Response(
             content=(
-                app.packets.notification("Server has restarted.")
-                + app.packets.restart_server(0)  # ms until reconnection
+                # app.packets.notification("Server has restarted.") +
+                app.packets.restart_server(0)  # ms until reconnection
             ),
         )
 
@@ -461,24 +461,27 @@ class StatsUpdateRequest(BasePacket):
 
 # Some messages to send on welcome/restricted/etc.
 # TODO: these should probably be moved to the config.
-WELCOME_MSG = "\n".join(
-    (
-        f"Welcome to {BASE_DOMAIN}.",
-        "To see a list of commands, use !help.",
-        f"We have a public (Discord)[{app.settings.DISCORD_INVITE}]!",
-        "Enjoy the server!",
-    ),
-)
+# WELCOME_MSG = "\n".join(
+#     (
+#         f"Welcome to {BASE_DOMAIN}.",
+#         "To see a list of commands, use !help.",
+#         f"We have a public (Discord)[{app.settings.DISCORD_INVITE}]!",
+#         "Enjoy the server!",
+#     ),
+# )
+WELCOME_MSG = b""
 
-RESTRICTED_MSG = (
-    "Your account is currently in restricted mode. "
-    "If you believe this is a mistake, or have waited a period "
-    "greater than 3 months, you may appeal via the form on the site."
-)
+# RESTRICTED_MSG = (
+#     "Your account is currently in restricted mode. "
+#     "If you believe this is a mistake, or have waited a period "
+#     "greater than 3 months, you may appeal via the form on the site."
+# )
+RESTRICTED_MSG = b""
 
-WELCOME_NOTIFICATION = app.packets.notification(
-    f"Welcome back to {BASE_DOMAIN}!\nRunning bancho.py v{app.settings.VERSION}.",
-)
+# WELCOME_NOTIFICATION = app.packets.notification(
+#     f"Welcome back to {BASE_DOMAIN}!\nRunning bancho.py v{app.settings.VERSION}.",
+# )
+WELCOME_NOTIFICATION = b""
 
 
 class LoginResponse(TypedDict):
@@ -659,7 +662,7 @@ async def handle_osu_login_request(
             "osu_token": "invalid-request",
             "response_body": (
                 app.packets.login_reply(LoginFailureReason.AUTHENTICATION_FAILED)
-                + app.packets.notification("Please restart your osu! and try again.")
+                # + app.packets.notification("Please restart your osu! and try again.")
             ),
         }
 
@@ -686,7 +689,7 @@ async def handle_osu_login_request(
             "osu_token": "empty-adapters",
             "response_body": (
                 app.packets.login_reply(LoginFailureReason.AUTHENTICATION_FAILED)
-                + app.packets.notification("Please restart your osu! and try again.")
+                # + app.packets.notification("Please restart your osu! and try again.")
             ),
         }
 
@@ -704,7 +707,7 @@ async def handle_osu_login_request(
                 "osu_token": "user-already-logged-in",
                 "response_body": (
                     app.packets.login_reply(LoginFailureReason.AUTHENTICATION_FAILED)
-                    + app.packets.notification("User already logged in.")
+                    # + app.packets.notification("User already logged in.")
                 ),
             }
         else:
@@ -717,8 +720,8 @@ async def handle_osu_login_request(
         return {
             "osu_token": "incorrect-credentials",
             "response_body": (
-                app.packets.notification(f"{BASE_DOMAIN}: Incorrect credentials")
-                + app.packets.login_reply(LoginFailureReason.AUTHENTICATION_FAILED)
+                # app.packets.notification(f"{BASE_DOMAIN}: Incorrect credentials")
+                app.packets.login_reply(LoginFailureReason.AUTHENTICATION_FAILED)
             ),
         }
 
@@ -790,10 +793,10 @@ async def handle_osu_login_request(
                 return {
                     "osu_token": "contact-staff",
                     "response_body": (
-                        app.packets.notification(
-                            "Please contact staff directly to create an account.",
-                        )
-                        + app.packets.login_reply(
+                        # app.packets.notification(
+                        #     "Please contact staff directly to create an account.",
+                        # )
+                        app.packets.login_reply(
                             LoginFailureReason.AUTHENTICATION_FAILED,
                         )
                     ),
@@ -819,7 +822,7 @@ async def handle_osu_login_request(
                 app.packets.notification(
                     f"{BASE_DOMAIN}: Login failed. Please contact an admin.",
                 )
-                + app.packets.login_reply(LoginFailureReason.AUTHENTICATION_FAILED)
+                # + app.packets.login_reply(LoginFailureReason.AUTHENTICATION_FAILED)
             ),
         }
 
@@ -1187,9 +1190,9 @@ class SendPrivateMessage(BasePacket):
         if len(msg) > 2000:
             msg = f"{msg[:2000]}... (truncated)"
             player.enqueue(
-                app.packets.notification(
-                    "Your message was truncated\n(exceeded 2000 characters).",
-                ),
+                # app.packets.notification(
+                #     "Your message was truncated\n(exceeded 2000 characters).",
+                # ),
             )
 
         if target.status.action == Action.Afk and target.away_msg:
@@ -1203,12 +1206,12 @@ class SendPrivateMessage(BasePacket):
             else:
                 # inform user they're offline, but
                 # will receive the mail @ next login.
-                player.enqueue(
-                    app.packets.notification(
-                        f"{target.name} is currently offline, but will "
-                        "receive your messsage on their next login.",
-                    ),
-                )
+                # player.enqueue(
+                #     app.packets.notification(
+                #         f"{target.name} is currently offline, but will "
+                #         "receive your messsage on their next login.",
+                #     ),
+                # )
 
             # insert mail into db, marked as unread.
             await mail_repo.create(
@@ -1379,9 +1382,9 @@ class MatchCreate(BasePacket):
         if player.silenced:
             player.enqueue(
                 app.packets.match_join_fail()
-                + app.packets.notification(
-                    "Multiplayer is not available while silenced.",
-                ),
+                # + app.packets.notification(
+                #     "Multiplayer is not available while silenced.",
+                # )
             )
             return
 

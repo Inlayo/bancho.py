@@ -316,18 +316,18 @@ async def lastFM(
 
             return Response(b"-3")
 
-        player.enqueue(
-            app.packets.notification(
-                "\n".join(
-                    [
-                        "Hey!",
-                        "It appears you have hq!osu's multiaccounting tool (relife) enabled.",
-                        "This tool leaves a change in your registry that the osu! client can detect.",
-                        "Please re-install relife and disable the program to avoid any restrictions.",
-                    ],
-                ),
-            ),
-        )
+        # player.enqueue(
+        #     app.packets.notification(
+        #         "\n".join(
+        #             [
+        #                 "Hey!",
+        #                 "It appears you have hq!osu's multiaccounting tool (relife) enabled.",
+        #                 "This tool leaves a change in your registry that the osu! client can detect.",
+        #                 "Please re-install relife and disable the program to avoid any restrictions.",
+        #             ],
+        #         ),
+        #     ),
+        # )
 
         player.logout()
 
@@ -724,11 +724,11 @@ async def osuSubmitModularSelector(
                 else:
                     performance = f"{score.pp:,.2f}pp"
 
-                score.player.enqueue(
-                    app.packets.notification(
-                        f"You achieved #{score.rank}! ({performance})",
-                    ),
-                )
+                # score.player.enqueue(
+                #     app.packets.notification(
+                #         f"You achieved #{score.rank}! ({performance})",
+                #     ),
+                # )
 
                 if score.rank == 1 and not score.player.restricted:
                     announce_chan = app.state.sessions.channels.get_by_name("#announce")

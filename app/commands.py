@@ -1019,7 +1019,7 @@ async def shutdown(ctx: Context) -> str | None | NoReturn:
                 f'Reason: {" ".join(ctx.args[1:])}'
             )
 
-            app.state.sessions.players.enqueue(app.packets.notification(alert_msg))
+            # app.state.sessions.players.enqueue(app.packets.notification(alert_msg))
 
         app.state.loop.call_later(delay, os.kill, os.getpid(), signal.SIGTERM)
         return f"Enqueued {ctx.trigger}."
