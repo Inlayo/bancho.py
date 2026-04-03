@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-# import time
-
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.requests import Request
@@ -9,6 +7,10 @@ from starlette.responses import Response
 
 from app.logging import Ansi
 from app.logging import log
+
+# import time
+
+
 # from app.logging import magnitude_fmt_time
 
 

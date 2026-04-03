@@ -473,7 +473,7 @@ class BanchoPacketReader:
 
             shift += 7
 
-        val = self.body_view[:length].tobytes().decode('utf-8')  # copy
+        val = self.body_view[:length].tobytes().decode("utf-8")  # copy
         self.body_view = self.body_view[length:]
         return val
 
@@ -585,7 +585,7 @@ def write_uleb128(num: int) -> bytes | bytearray:
 def write_string(s: str) -> bytes:
     """Write `s` into bytes (ULEB128 & string)."""
     if s:
-        encoded = s.encode('utf-8')
+        encoded = s.encode("utf-8")
         ret = b"\x0b" + write_uleb128(len(encoded)) + encoded
     else:
         ret = b"\x00"

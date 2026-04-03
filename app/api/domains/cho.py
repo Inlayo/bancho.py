@@ -40,6 +40,7 @@ from app.constants.privileges import Privileges
 from app.logging import Ansi
 from app.logging import get_timestamp
 from app.logging import log
+
 # from app.logging import magnitude_fmt_time
 from app.objects.beatmap import Beatmap
 from app.objects.beatmap import ensure_osu_file_is_available
@@ -98,7 +99,7 @@ async def bancho_http_handler() -> Response:
     packets = app.state.packets["all"]
 
     return HTMLResponse(
-        f"""
+        rf"""
 <!DOCTYPE html>
 <body style="font-family: monospace; white-space: pre-wrap; background:#222; color:#fff;">
 <marquee style="white-space:pre; width:30%;" direction="right">
@@ -178,14 +179,16 @@ async def bancho_view_matches() -> Response:
 <!DOCTYPE html>
 <body style="font-family: monospace;  white-space: pre-wrap; background:#222; color:#fff;"><a href="/">back</a>
 matches:
-{new_line.join(
-    f'''{(ON_GOING if m.in_progress else IDLE):<{max_status_length}} ({m.id:>{match_id_max_length}}): {m.name}
+{
+            new_line.join(
+                f'''{(ON_GOING if m.in_progress else IDLE):<{max_status_length}} ({m.id:>{match_id_max_length}}): {m.name}
 -- '''
-    + f"{new_line}-- ".join([
-        f'{BEATMAP:<{max_properties_length}}: {m.map_name}',
-        f'{HOST:<{max_properties_length}}: <{m.host.id}> {m.host.safe_name}'
-    ]) for m in matches
-)}
+                + f"{new_line}-- ".join([
+                    f'{BEATMAP:<{max_properties_length}}: {m.map_name}',
+                    f'{HOST:<{max_properties_length}}: <{m.host.id}> {m.host.safe_name}',
+                ]) for m in matches
+            )
+        }
 </body>
 </html>""",
     )
@@ -481,14 +484,14 @@ class StatsUpdateRequest(BasePacket):
 #         "Enjoy the server!",
 #     ),
 # )
-WELCOME_MSG = b""
+WELCOME_MSG = ""
 
 # RESTRICTED_MSG = (
 #     "Your account is currently in restricted mode. "
 #     "If you believe this is a mistake, or have waited a period "
 #     "greater than 3 months, you may appeal via the form on the site."
 # )
-RESTRICTED_MSG = b""
+RESTRICTED_MSG = ""
 
 # WELCOME_NOTIFICATION = app.packets.notification(
 #     f"Welcome back to {BASE_DOMAIN}!\nRunning bancho.py v{app.settings.VERSION}.",
@@ -521,7 +524,9 @@ def parse_login_data(data: bytes) -> LoginData:
         username,
         password_md5,
         remainder,
-    ) = data.decode('utf-8').split("\n", maxsplit=2)
+    ) = data.decode(
+        "utf-8",
+    ).split("\n", maxsplit=2)
 
     (
         osu_version,
@@ -1201,11 +1206,11 @@ class SendPrivateMessage(BasePacket):
         # perhaps this could be dangerous with !py..?
         if len(msg) > 2000:
             msg = f"{msg[:2000]}... (truncated)"
-            player.enqueue(
-                # app.packets.notification(
-                #     "Your message was truncated\n(exceeded 2000 characters).",
-                # ),
-            )
+            # player.enqueue(
+            # app.packets.notification(
+            #     "Your message was truncated\n(exceeded 2000 characters).",
+            # ),
+            # )
 
         if target.status.action == Action.Afk and target.away_msg:
             # send away message if target is afk and has one set.
@@ -1394,7 +1399,7 @@ class MatchCreate(BasePacket):
 
         if player.silenced:
             player.enqueue(
-                app.packets.match_join_fail()
+                app.packets.match_join_fail(),
                 # + app.packets.notification(
                 #     "Multiplayer is not available while silenced.",
                 # )

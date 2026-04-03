@@ -11,6 +11,7 @@ from enum import unique
 from pathlib import Path
 from typing import Any
 from typing import TypedDict
+from typing import cast
 
 import httpx
 from tenacity import retry
@@ -44,7 +45,7 @@ class BeatmapApiResponse(TypedDict):
 async def api_get_beatmaps(**params: Any) -> BeatmapApiResponse:
     """\
     Fetch data from the osu!api with a beatmap's md5.
-    
+
     Tries akatsuki.gg API first, then falls back to osu!api or osu.direct.
     """
     if app.settings.DEBUG:
@@ -53,7 +54,7 @@ async def api_get_beatmaps(**params: Any) -> BeatmapApiResponse:
     # Try Akatsuki API first
     akatsuki_url = "https://api.akatsuki.gg/v1/beatmaps"
     akatsuki_params = {}
-    
+
     # Convert params to akatsuki format
     if "h" in params:  # md5
         akatsuki_params["md5"] = params["h"]
@@ -61,10 +62,13 @@ async def api_get_beatmaps(**params: Any) -> BeatmapApiResponse:
         akatsuki_params["id"] = params["b"]
     elif "s" in params:  # beatmap set id
         akatsuki_params["set_id"] = params["s"]
-    
+
     if akatsuki_params:
         try:
-            response = await app.state.services.http_client.get(akatsuki_url, params=akatsuki_params)
+            response = await app.state.services.http_client.get(
+                akatsuki_url,
+                params=akatsuki_params,
+            )
             response_data = response.json()
             if response.status_code == 200 and response_data:
                 # Convert akatsuki response format to osu!api format if needed
@@ -72,11 +76,17 @@ async def api_get_beatmaps(**params: Any) -> BeatmapApiResponse:
                     # Akatsuki returns data in different format
                     beatmaps = response_data["beatmaps"]
                     if beatmaps:
-                        log(f"Successfully fetched beatmap data from Akatsuki API", Ansi.LGREEN)
+                        log(
+                            f"Successfully fetched beatmap data from Akatsuki API",
+                            Ansi.LGREEN,
+                        )
                         return {"data": beatmaps, "status_code": response.status_code}
         except Exception as e:
             if app.settings.DEBUG:
-                log(f"Akatsuki API request failed: {e}, falling back to osu!api", Ansi.LYELLOW)
+                log(
+                    f"Akatsuki API request failed: {e}, falling back to osu!api",
+                    Ansi.LYELLOW,
+                )
 
     # Fall back to osu!api or osu.direct
     if app.settings.OSU_API_KEY:
@@ -101,20 +111,26 @@ async def api_get_ranked_status(beatmap_id: int) -> dict[str, Any] | None:
     try:
         url = "https://api.akatsuki.gg/v1/beatmaps"
         params = {"id": beatmap_id}
-        
+
         response = await app.state.services.http_client.get(url, params=params)
         response_data = response.json()
-        
+
         if response.status_code == 200 and response_data:
             if isinstance(response_data, dict) and "beatmaps" in response_data:
                 beatmaps = response_data["beatmaps"]
                 if beatmaps and len(beatmaps) > 0:
-                    log(f"Successfully fetched ranked status from Akatsuki for beatmap {beatmap_id}", Ansi.LGREEN)
-                    return beatmaps[0]
+                    log(
+                        f"Successfully fetched ranked status from Akatsuki for beatmap {beatmap_id}",
+                        Ansi.LGREEN,
+                    )
+                    return cast(dict[str, Any], beatmaps[0])
     except Exception as e:
         if app.settings.DEBUG:
-            log(f"Akatsuki ranked status request failed for {beatmap_id}: {e}", Ansi.LYELLOW)
-    
+            log(
+                f"Akatsuki ranked status request failed for {beatmap_id}: {e}",
+                Ansi.LYELLOW,
+            )
+
     return None
 
 
