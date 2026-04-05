@@ -560,7 +560,7 @@ class Beatmap:
         """Change internal data with the data in osu!api format."""
         # NOTE: `self` is not guaranteed to have any attributes
         #       initialized when this is called.
-        self.md5 = osuapi_resp.get("file_md5") or osuapi_resp.get("md5")
+        self.md5 = str(osuapi_resp.get("file_md5") or osuapi_resp.get("md5") or "")
         # self.id = int(osuapi_resp['beatmap_id'])
         self.set_id = int(osuapi_resp["beatmapset_id"])
 
@@ -665,6 +665,7 @@ class BeatmapSet:
 
         self.maps = maps or []
         self.last_osuapi_check = last_osuapi_check
+        self.source: str = "fallback"
 
     def __repr__(self) -> str:
         map_names = []
@@ -967,13 +968,13 @@ class BeatmapSet:
     async def _from_bsid_osuapi(cls, bsid: int) -> BeatmapSet | None:
         """Fetch a mapset from the osu!api by set id."""
         api_data = await api_get_beatmaps(s=bsid)
-        source = api_data.get("source", "fallback")
+        source = str(api_data.get("source", "fallback"))
         if api_data["data"] is not None:
             api_response = api_data["data"]
 
             self = cls(id=bsid, last_osuapi_check=datetime.now())
             self.source = source
-            
+
             # XXX: pre-mapset bancho.py support
             # select all current beatmaps
             # that're frozen in the db
@@ -1023,38 +1024,39 @@ class BeatmapSet:
         return None
 
     @classmethod
-async def from_bsid(cls, bsid: int) -> BeatmapSet | None:
-    """Cache all maps in a set from the osuapi, optionally
-    returning beatmaps by their md5 or id."""
+    async def from_bsid(cls, bsid: int) -> BeatmapSet | None:
+        """Cache all maps in a set from the osuapi, optionally
+        returning beatmaps by their md5 or id."""
 
-    fresh = await cls._from_bsid_osuapi(bsid)
+        fresh = await cls._from_bsid_osuapi(bsid)
 
-    if fresh:
-        if getattr(fresh, "source", "fallback") == "akatsuki":
-            cache_beatmap_set(fresh)
-        return fresh
-    
-    bmap_set = await cls._from_bsid_cache(bsid)
-    did_api_request = False
+        if fresh:
+            if getattr(fresh, "source", "fallback") == "akatsuki":
+                cache_beatmap_set(fresh)
+            return fresh
 
-    if not bmap_set:
-        bmap_set = await cls._from_bsid_sql(bsid)
+        bmap_set = await cls._from_bsid_cache(bsid)
+        did_api_request = False
 
         if not bmap_set:
-            bmap_set = await cls._from_bsid_osuapi(bsid)
+            bmap_set = await cls._from_bsid_sql(bsid)
 
             if not bmap_set:
-                return None
+                bmap_set = await cls._from_bsid_osuapi(bsid)
 
-            did_api_request = True
+                if not bmap_set:
+                    return None
 
-    if not did_api_request and bmap_set._cache_expired():
-        await bmap_set._update_if_available()
+                did_api_request = True
 
-    if getattr(bmap_set, "source", "fallback") == "akatsuki":
-        cache_beatmap_set(bmap_set)
+        if not did_api_request and bmap_set._cache_expired():
+            await bmap_set._update_if_available()
 
-    return bmap_set
+        if getattr(bmap_set, "source", "fallback") == "akatsuki":
+            cache_beatmap_set(bmap_set)
+
+        return bmap_set
+
 
 def cache_beatmap(beatmap: Beatmap) -> None:
     """Add the beatmap to the cache."""
