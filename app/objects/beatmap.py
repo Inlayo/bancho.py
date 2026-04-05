@@ -560,7 +560,7 @@ class Beatmap:
         """Change internal data with the data in osu!api format."""
         # NOTE: `self` is not guaranteed to have any attributes
         #       initialized when this is called.
-        self.md5 = osuapi_resp["file_md5"]
+        self.md5 = osuapi_resp.get("file_md5") or osuapi_resp.get("md5")
         # self.id = int(osuapi_resp['beatmap_id'])
         self.set_id = int(osuapi_resp["beatmapset_id"])
 
@@ -967,11 +967,13 @@ class BeatmapSet:
     async def _from_bsid_osuapi(cls, bsid: int) -> BeatmapSet | None:
         """Fetch a mapset from the osu!api by set id."""
         api_data = await api_get_beatmaps(s=bsid)
+        source = api_data.get("source", "fallback")
         if api_data["data"] is not None:
             api_response = api_data["data"]
 
             self = cls(id=bsid, last_osuapi_check=datetime.now())
-
+            self.source = source
+            
             # XXX: pre-mapset bancho.py support
             # select all current beatmaps
             # that're frozen in the db
@@ -1003,52 +1005,56 @@ class BeatmapSet:
                 bmap.set = self
                 self.maps.append(bmap)
 
-            await app.state.services.database.execute(
-                "REPLACE INTO mapsets "
-                "(id, server, last_osuapi_check) "
-                "VALUES (:id, :server, :last_osuapi_check)",
-                {
-                    "id": self.id,
-                    "server": "osu!",
-                    "last_osuapi_check": self.last_osuapi_check,
-                },
-            )
+            if source == "akatsuki":
+                await app.state.services.database.execute(
+                    "REPLACE INTO mapsets "
+                    "(id, server, last_osuapi_check) "
+                    "VALUES (:id, :server, :last_osuapi_check)",
+                    {
+                        "id": self.id,
+                        "server": "osu!",
+                        "last_osuapi_check": self.last_osuapi_check,
+                    },
+                )
 
-            await self._save_to_sql()
+                await self._save_to_sql()
             return self
 
         return None
 
     @classmethod
-    async def from_bsid(cls, bsid: int) -> BeatmapSet | None:
-        """Cache all maps in a set from the osuapi, optionally
-        returning beatmaps by their md5 or id."""
-        bmap_set = await cls._from_bsid_cache(bsid)
-        did_api_request = False
+async def from_bsid(cls, bsid: int) -> BeatmapSet | None:
+    """Cache all maps in a set from the osuapi, optionally
+    returning beatmaps by their md5 or id."""
+
+    fresh = await cls._from_bsid_osuapi(bsid)
+
+    if fresh:
+        if getattr(fresh, "source", "fallback") == "akatsuki":
+            cache_beatmap_set(fresh)
+        return fresh
+    
+    bmap_set = await cls._from_bsid_cache(bsid)
+    did_api_request = False
+
+    if not bmap_set:
+        bmap_set = await cls._from_bsid_sql(bsid)
 
         if not bmap_set:
-            bmap_set = await cls._from_bsid_sql(bsid)
+            bmap_set = await cls._from_bsid_osuapi(bsid)
 
             if not bmap_set:
-                bmap_set = await cls._from_bsid_osuapi(bsid)
+                return None
 
-                if not bmap_set:
-                    return None
+            did_api_request = True
 
-                did_api_request = True
+    if not did_api_request and bmap_set._cache_expired():
+        await bmap_set._update_if_available()
 
-        # TODO: this can be done less often for certain types of maps,
-        # such as ones that're ranked on bancho and won't be updated,
-        # and perhaps ones that haven't been updated in a long time.
-        if not did_api_request and bmap_set._cache_expired():
-            await bmap_set._update_if_available()
-
-        # cache the beatmap set, and beatmaps
-        # to be efficient in future requests
+    if getattr(bmap_set, "source", "fallback") == "akatsuki":
         cache_beatmap_set(bmap_set)
 
-        return bmap_set
-
+    return bmap_set
 
 def cache_beatmap(beatmap: Beatmap) -> None:
     """Add the beatmap to the cache."""
