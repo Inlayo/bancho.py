@@ -71,16 +71,13 @@ async def api_get_beatmaps(**params: Any) -> BeatmapApiResponse:
             )
             response_data = response.json()
             if response.status_code == 200 and response_data:
-                # Convert akatsuki response format to osu!api format if needed
-                if isinstance(response_data, dict) and "beatmaps" in response_data:
-                    # Akatsuki returns data in different format
-                    beatmaps = response_data["beatmaps"]
-                    if beatmaps:
-                        log(
-                            f"Successfully fetched beatmap data from Akatsuki API",
-                            Ansi.LGREEN,
-                        )
-                        return {"data": beatmaps, "status_code": response.status_code}
+                # Akatsuki returns data in different format, skip it
+                # as it doesn't have all required fields for osu!api format
+                if app.settings.DEBUG:
+                    log(
+                        f"Akatsuki API returned data, but falling back to osu!api for complete data",
+                        Ansi.LYELLOW,
+                    )
         except Exception as e:
             if app.settings.DEBUG:
                 log(
