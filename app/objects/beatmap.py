@@ -41,6 +41,51 @@ class BeatmapApiResponse(TypedDict):
     status_code: int
 
 
+def _convert_akatsuki_to_osuapi(akatsuki_bmap: dict[str, Any]) -> dict[str, Any]:
+    """Convert Akatsuki API beatmap format to osu!api format."""
+    # Parse song_name "artist - title [version]" format
+    song_name = akatsuki_bmap.get("song_name", "")
+    artist = ""
+    title = ""
+    version = ""
+    creator = ""
+
+    if " - " in song_name and "[" in song_name:
+        parts = song_name.rsplit("[", 1)
+        artist_title = parts[0].strip()
+        version = parts[1].rstrip("]").strip() if len(parts) > 1 else ""
+
+        if " - " in artist_title:
+            artist, title = artist_title.split(" - ", 1)
+            artist = artist.strip()
+            title = title.strip()
+    else:
+        title = song_name
+
+    # Map Akatsuki fields to osu!api format
+    return {
+        "beatmap_id": akatsuki_bmap.get("beatmap_id"),
+        "beatmapset_id": akatsuki_bmap.get("beatmapset_id"),
+        "file_md5": akatsuki_bmap.get("beatmap_md5"),
+        "md5": akatsuki_bmap.get("beatmap_md5"),
+        "artist": artist,
+        "title": title,
+        "version": version,
+        "creator": creator or "Unknown",
+        "approved": akatsuki_bmap.get("ranked", 0),
+        "last_update": akatsuki_bmap.get("latest_update", "1970-01-01T00:00:00Z").replace("Z", "").replace("T", " "),
+        "total_length": akatsuki_bmap.get("hit_length", 0),
+        "max_combo": akatsuki_bmap.get("max_combo"),
+        "mode": 0,  # std by default
+        "bpm": None,
+        "diff_size": akatsuki_bmap.get("ar", 5),
+        "diff_overall": akatsuki_bmap.get("od", 5),
+        "diff_approach": akatsuki_bmap.get("ar", 5),
+        "diff_drain": akatsuki_bmap.get("od", 5),
+        "difficultyrating": akatsuki_bmap.get("difficulty", 0),
+    }
+
+
 @retry(reraise=True, stop=stop_after_attempt(3))
 async def api_get_beatmaps(**params: Any) -> BeatmapApiResponse:
     """\
@@ -71,13 +116,20 @@ async def api_get_beatmaps(**params: Any) -> BeatmapApiResponse:
             )
             response_data = response.json()
             if response.status_code == 200 and response_data:
-                # Akatsuki returns data in different format, skip it
-                # as it doesn't have all required fields for osu!api format
-                if app.settings.DEBUG:
-                    log(
-                        f"Akatsuki API returned data, but falling back to osu!api for complete data",
-                        Ansi.LYELLOW,
-                    )
+                # Convert akatsuki response format to osu!api format
+                if isinstance(response_data, dict) and "beatmaps" in response_data:
+                    # Akatsuki returns data in different format
+                    beatmaps = response_data["beatmaps"]
+                    if beatmaps:
+                        log(
+                            f"Successfully fetched beatmap data from Akatsuki API",
+                            Ansi.LGREEN,
+                        )
+                        # Convert Akatsuki format to osu!api format
+                        converted_beatmaps = [
+                            _convert_akatsuki_to_osuapi(bmap) for bmap in beatmaps
+                        ]
+                        return {"data": converted_beatmaps, "status_code": response.status_code}
         except Exception as e:
             if app.settings.DEBUG:
                 log(
