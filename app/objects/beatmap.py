@@ -78,27 +78,25 @@ async def api_get_ranked_status_from_akatsuki(beatmap_id: int) -> int | None:
     """\
     Fetch ranked status from Akatsuki API for a specific beatmap.
     Returns the ranked status as an integer, or None if failed.
+
+    Status codes:
+    4 = loved, 3 = qualified, 2 = approved, 1 = ranked, 0 = pending, -1 = WIP, -2 = graveyard
     """
     if app.settings.DEBUG:
         log(f"Fetching ranked status from Akatsuki for beatmap {beatmap_id}", Ansi.LMAGENTA)
 
     try:
-        url = f"https://akatsuki.gg/api/v1/beatmaps"
+        url = "https://akatsuki.gg/api/v1/beatmaps"
         params = {"b": beatmap_id}
         response = await app.state.services.http_client.get(url, params=params)
 
         if response.status_code == 200:
             response_data = response.json()
-            # Akatsuki API response format
-            if response_data and isinstance(response_data, dict):
-                # Try to get ranked status from the response
-                if "ranked" in response_data:
-                    return int(response_data["ranked"])
-                # Alternative: check if beatmaps array exists
-                if "beatmaps" in response_data and response_data["beatmaps"]:
-                    beatmap_data = response_data["beatmaps"][0]
-                    if "ranked" in beatmap_data:
-                        return int(beatmap_data["ranked"])
+            if response_data and isinstance(response_data, dict) and "ranked" in response_data:
+                akatsuki_status = int(response_data["ranked"])
+                if app.settings.DEBUG:
+                    log(f"Got Akatsuki ranked status {akatsuki_status} for beatmap {beatmap_id}", Ansi.LMAGENTA)
+                return akatsuki_status
 
         return None
     except Exception as e:
