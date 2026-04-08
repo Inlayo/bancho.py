@@ -11,7 +11,6 @@ from enum import unique
 from pathlib import Path
 from typing import Any
 from typing import TypedDict
-from typing import cast
 
 import httpx
 from tenacity import retry
@@ -41,103 +40,16 @@ class BeatmapApiResponse(TypedDict):
     status_code: int
 
 
-def _convert_akatsuki_to_osuapi(akatsuki_bmap: dict[str, Any]) -> dict[str, Any]:
-    """Convert Akatsuki API beatmap format to osu!api format."""
-    # Parse song_name "artist - title [version]" format
-    song_name = akatsuki_bmap.get("song_name", "")
-    artist = ""
-    title = ""
-    version = ""
-    creator = ""
-
-    if " - " in song_name and "[" in song_name:
-        parts = song_name.rsplit("[", 1)
-        artist_title = parts[0].strip()
-        version = parts[1].rstrip("]").strip() if len(parts) > 1 else ""
-
-        if " - " in artist_title:
-            artist, title = artist_title.split(" - ", 1)
-            artist = artist.strip()
-            title = title.strip()
-    else:
-        title = song_name
-
-    # Map Akatsuki fields to osu!api format
-    return {
-        "beatmap_id": akatsuki_bmap.get("beatmap_id"),
-        "beatmapset_id": akatsuki_bmap.get("beatmapset_id"),
-        "file_md5": akatsuki_bmap.get("beatmap_md5"),
-        "md5": akatsuki_bmap.get("beatmap_md5"),
-        "artist": artist,
-        "title": title,
-        "version": version,
-        "creator": creator or "Unknown",
-        "approved": akatsuki_bmap.get("ranked", 0),
-        "last_update": akatsuki_bmap.get("latest_update", "1970-01-01T00:00:00Z").replace("Z", "").replace("T", " "),
-        "total_length": akatsuki_bmap.get("hit_length", 0),
-        "max_combo": akatsuki_bmap.get("max_combo"),
-        "mode": 0,  # std by default
-        "bpm": None,
-        "diff_size": akatsuki_bmap.get("ar", 5),
-        "diff_overall": akatsuki_bmap.get("od", 5),
-        "diff_approach": akatsuki_bmap.get("ar", 5),
-        "diff_drain": akatsuki_bmap.get("od", 5),
-        "difficultyrating": akatsuki_bmap.get("difficulty", 0),
-    }
-
-
 @retry(reraise=True, stop=stop_after_attempt(3))
 async def api_get_beatmaps(**params: Any) -> BeatmapApiResponse:
     """\
     Fetch data from the osu!api with a beatmap's md5.
 
-    Tries akatsuki.gg API first, then falls back to osu!api or osu.direct.
+    Optionally use osu.direct's API if the user has not provided an osu! api key.
     """
     if app.settings.DEBUG:
         log(f"Doing api (getbeatmaps) request {params}", Ansi.LMAGENTA)
 
-    # Try Akatsuki API first
-    akatsuki_url = "https://akatsuki.gg/api/v1/beatmaps"
-    akatsuki_params = {}
-
-    # Convert params to akatsuki format
-    if "h" in params:  # md5
-        akatsuki_params["md5"] = params["h"]
-    elif "b" in params:  # beatmap id
-        akatsuki_params["id"] = params["b"]
-    elif "s" in params:  # beatmap set id
-        akatsuki_params["set_id"] = params["s"]
-
-    if akatsuki_params:
-        try:
-            response = await app.state.services.http_client.get(
-                akatsuki_url,
-                params=akatsuki_params,
-            )
-            response_data = response.json()
-            if response.status_code == 200 and response_data:
-                # Convert akatsuki response format to osu!api format
-                if isinstance(response_data, dict) and "beatmaps" in response_data:
-                    # Akatsuki returns data in different format
-                    beatmaps = response_data["beatmaps"]
-                    if beatmaps:
-                        log(
-                            f"Successfully fetched beatmap data from Akatsuki API",
-                            Ansi.LGREEN,
-                        )
-                        # Convert Akatsuki format to osu!api format
-                        converted_beatmaps = [
-                            _convert_akatsuki_to_osuapi(bmap) for bmap in beatmaps
-                        ]
-                        return {"data": converted_beatmaps, "status_code": response.status_code}
-        except Exception as e:
-            if app.settings.DEBUG:
-                log(
-                    f"Akatsuki API request failed: {e}, falling back to osu!api",
-                    Ansi.LYELLOW,
-                )
-
-    # Fall back to osu!api or osu.direct
     if app.settings.OSU_API_KEY:
         # https://github.com/ppy/osu-api/wiki#apiget_beatmaps
         url = "https://old.ppy.sh/api/get_beatmaps"
@@ -155,40 +67,39 @@ async def api_get_beatmaps(**params: Any) -> BeatmapApiResponse:
 
 
 @retry(reraise=True, stop=stop_after_attempt(3))
-async def api_get_ranked_status(beatmap_id: int) -> dict[str, Any] | None:
-    """Fetch ranked status for a beatmap from Akatsuki API."""
-    try:
-        url = "https://api.akatsuki.gg/v1/beatmaps"
-        params = {"id": beatmap_id}
-
-        response = await app.state.services.http_client.get(url, params=params)
-        response_data = response.json()
-
-        if response.status_code == 200 and response_data:
-            if isinstance(response_data, dict) and "beatmaps" in response_data:
-                beatmaps = response_data["beatmaps"]
-                if beatmaps and len(beatmaps) > 0:
-                    log(
-                        f"Successfully fetched ranked status from Akatsuki for beatmap {beatmap_id}",
-                        Ansi.LGREEN,
-                    )
-                    return cast(dict[str, Any], beatmaps[0])
-    except Exception as e:
-        if app.settings.DEBUG:
-            log(
-                f"Akatsuki ranked status request failed for {beatmap_id}: {e}",
-                Ansi.LYELLOW,
-            )
-
-    return None
-
-
-@retry(reraise=True, stop=stop_after_attempt(3))
 async def api_get_osu_file(beatmap_id: int) -> bytes:
     url = f"https://old.ppy.sh/osu/{beatmap_id}"
     response = await app.state.services.http_client.get(url)
     response.raise_for_status()
     return response.read()
+
+
+async def api_get_ranked_status_from_akatsuki(beatmap_id: int) -> int | None:
+    """\
+    Fetch ranked status from Akatsuki API for a specific beatmap.
+    Returns the ranked status as an integer, or None if failed.
+    """
+    if app.settings.DEBUG:
+        log(f"Fetching ranked status from Akatsuki for beatmap {beatmap_id}", Ansi.LMAGENTA)
+
+    try:
+        url = f"https://api.akatsuki.gg/beatmaps"
+        params = {"b": beatmap_id}
+        response = await app.state.services.http_client.get(url, params=params)
+
+        if response.status_code == 200:
+            response_data = response.json()
+            if response_data and "beatmaps" in response_data and response_data["beatmaps"]:
+                beatmap_data = response_data["beatmaps"][0]
+                # Akatsuki uses 'ranked' field for ranked status
+                if "ranked" in beatmap_data:
+                    return int(beatmap_data["ranked"])
+
+        return None
+    except Exception as e:
+        if app.settings.DEBUG:
+            log(f"Failed to fetch ranked status from Akatsuki: {e}", Ansi.LRED)
+        return None
 
 
 def disk_has_expected_osu_file(
@@ -609,7 +520,7 @@ class Beatmap:
         """Change internal data with the data in osu!api format."""
         # NOTE: `self` is not guaranteed to have any attributes
         #       initialized when this is called.
-        self.md5 = str(osuapi_resp.get("file_md5") or osuapi_resp.get("md5") or "")
+        self.md5 = osuapi_resp["file_md5"]
         # self.id = int(osuapi_resp['beatmap_id'])
         self.set_id = int(osuapi_resp["beatmapset_id"])
 
@@ -714,7 +625,6 @@ class BeatmapSet:
 
         self.maps = maps or []
         self.last_osuapi_check = last_osuapi_check
-        self.source: str = "fallback"
 
     def __repr__(self) -> str:
         map_names = []
@@ -808,9 +718,22 @@ class BeatmapSet:
                     map_md5s_to_delete.add(old_map.md5)
                 else:
                     new_map = new_maps[old_id]
-                    new_ranked_status = RankedStatus.from_osuapi(
-                        int(new_map["approved"]),
-                    )
+
+                    # Try to get ranked status from Akatsuki first
+                    akatsuki_ranked_status = await api_get_ranked_status_from_akatsuki(old_id)
+                    if akatsuki_ranked_status is not None:
+                        # Successfully got status from Akatsuki, use it
+                        new_ranked_status = RankedStatus.from_osuapi(akatsuki_ranked_status)
+                        if app.settings.DEBUG:
+                            log(f"Using Akatsuki ranked status {akatsuki_ranked_status} for beatmap {old_id}", Ansi.LCYAN)
+                    else:
+                        # Fallback to osu!api status (don't cache this failure)
+                        new_ranked_status = RankedStatus.from_osuapi(
+                            int(new_map["approved"]),
+                        )
+                        if app.settings.DEBUG:
+                            log(f"Using osu!api ranked status for beatmap {old_id} (Akatsuki failed)", Ansi.LYELLOW)
+
                     if (
                         old_map.md5 != new_map["file_md5"]
                         or old_map.status != new_ranked_status
@@ -818,6 +741,9 @@ class BeatmapSet:
                         # update map from old_maps
                         bmap = old_maps[old_id]
                         bmap._parse_from_osuapi_resp(new_map)
+                        # Override status with Akatsuki or osu!api result
+                        if not bmap.frozen:
+                            bmap.status = new_ranked_status
                         updated_maps.append(bmap)
                     else:
                         # map is the same, make no changes
@@ -831,6 +757,18 @@ class BeatmapSet:
                     bmap.id = new_id
 
                     bmap._parse_from_osuapi_resp(new_map)
+
+                    # Try to get ranked status from Akatsuki first
+                    akatsuki_ranked_status = await api_get_ranked_status_from_akatsuki(bmap.id)
+                    if akatsuki_ranked_status is not None:
+                        # Successfully got status from Akatsuki, use it
+                        bmap.status = RankedStatus.from_osuapi(akatsuki_ranked_status)
+                        if app.settings.DEBUG:
+                            log(f"Using Akatsuki ranked status {akatsuki_ranked_status} for new beatmap {bmap.id}", Ansi.LCYAN)
+                    else:
+                        # Keep osu!api status (fallback)
+                        if app.settings.DEBUG:
+                            log(f"Using osu!api ranked status for new beatmap {bmap.id} (Akatsuki failed)", Ansi.LYELLOW)
 
                     # (some implementation-specific stuff not given by api)
                     bmap.frozen = False
@@ -1017,12 +955,10 @@ class BeatmapSet:
     async def _from_bsid_osuapi(cls, bsid: int) -> BeatmapSet | None:
         """Fetch a mapset from the osu!api by set id."""
         api_data = await api_get_beatmaps(s=bsid)
-        source = str(api_data.get("source", "fallback"))
         if api_data["data"] is not None:
             api_response = api_data["data"]
 
             self = cls(id=bsid, last_osuapi_check=datetime.now())
-            self.source = source
 
             # XXX: pre-mapset bancho.py support
             # select all current beatmaps
@@ -1048,6 +984,14 @@ class BeatmapSet:
 
                 bmap._parse_from_osuapi_resp(api_bmap)
 
+                # Try to get ranked status from Akatsuki first
+                akatsuki_ranked_status = await api_get_ranked_status_from_akatsuki(bmap.id)
+                if akatsuki_ranked_status is not None and not bmap.frozen:
+                    # Successfully got status from Akatsuki, use it
+                    bmap.status = RankedStatus.from_osuapi(akatsuki_ranked_status)
+                    if app.settings.DEBUG:
+                        log(f"Using Akatsuki ranked status {akatsuki_ranked_status} for new beatmap {bmap.id}", Ansi.LCYAN)
+
                 # (some implementation-specific stuff not given by api)
                 bmap.passes = 0
                 bmap.plays = 0
@@ -1055,19 +999,18 @@ class BeatmapSet:
                 bmap.set = self
                 self.maps.append(bmap)
 
-            if source == "akatsuki":
-                await app.state.services.database.execute(
-                    "REPLACE INTO mapsets "
-                    "(id, server, last_osuapi_check) "
-                    "VALUES (:id, :server, :last_osuapi_check)",
-                    {
-                        "id": self.id,
-                        "server": "osu!",
-                        "last_osuapi_check": self.last_osuapi_check,
-                    },
-                )
+            await app.state.services.database.execute(
+                "REPLACE INTO mapsets "
+                "(id, server, last_osuapi_check) "
+                "VALUES (:id, :server, :last_osuapi_check)",
+                {
+                    "id": self.id,
+                    "server": "osu!",
+                    "last_osuapi_check": self.last_osuapi_check,
+                },
+            )
 
-                await self._save_to_sql()
+            await self._save_to_sql()
             return self
 
         return None
@@ -1076,14 +1019,6 @@ class BeatmapSet:
     async def from_bsid(cls, bsid: int) -> BeatmapSet | None:
         """Cache all maps in a set from the osuapi, optionally
         returning beatmaps by their md5 or id."""
-
-        fresh = await cls._from_bsid_osuapi(bsid)
-
-        if fresh:
-            if getattr(fresh, "source", "fallback") == "akatsuki":
-                cache_beatmap_set(fresh)
-            return fresh
-
         bmap_set = await cls._from_bsid_cache(bsid)
         did_api_request = False
 
@@ -1098,11 +1033,15 @@ class BeatmapSet:
 
                 did_api_request = True
 
+        # TODO: this can be done less often for certain types of maps,
+        # such as ones that're ranked on bancho and won't be updated,
+        # and perhaps ones that haven't been updated in a long time.
         if not did_api_request and bmap_set._cache_expired():
             await bmap_set._update_if_available()
 
-        if getattr(bmap_set, "source", "fallback") == "akatsuki":
-            cache_beatmap_set(bmap_set)
+        # cache the beatmap set, and beatmaps
+        # to be efficient in future requests
+        cache_beatmap_set(bmap_set)
 
         return bmap_set
 
