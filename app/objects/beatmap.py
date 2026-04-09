@@ -78,22 +78,17 @@ def convert_akatsuki_ranked_status(akatsuki_status: int) -> RankedStatus:
     """\
     Convert Akatsuki API ranked status to bancho RankedStatus.
 
-    Akatsuki status codes: 4=loved, 3=qualified, 2=approved, 1=ranked, 0=pending, -1=WIP, -2=graveyard
-    Converts to bancho RankedStatus: 5=Loved, 4=Qualified, 3=Approved, 2=Ranked, 0=Pending
+    Akatsuki API already returns values in bancho RankedStatus format:
+    5=loved, 4=qualified, 3=approved, 2=ranked, 0=pending, -1=WIP, -2=graveyard
     """
-    mapping: Mapping[int, RankedStatus] = defaultdict(
-        lambda: RankedStatus.Pending,
-        {
-            4: RankedStatus.Loved,
-            3: RankedStatus.Qualified,
-            2: RankedStatus.Approved,
-            1: RankedStatus.Ranked,
-            0: RankedStatus.Pending,
-            -1: RankedStatus.Pending,
-            -2: RankedStatus.Pending,
-        },
-    )
-    return mapping[akatsuki_status]
+    # WIP and graveyard map to Pending
+    if akatsuki_status in (-1, -2):
+        return RankedStatus.Pending
+
+    try:
+        return RankedStatus(akatsuki_status)
+    except ValueError:
+        return RankedStatus.Pending
 
 
 async def api_get_ranked_status_from_akatsuki(beatmap_id: int) -> RankedStatus | None:
