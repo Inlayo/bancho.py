@@ -97,7 +97,10 @@ async def api_get_ranked_status_from_akatsuki(beatmap_id: int) -> RankedStatus |
     Returns the ranked status as a RankedStatus enum, or None if failed.
     """
     if app.settings.DEBUG:
-        log(f"Fetching ranked status from Akatsuki for beatmap {beatmap_id}", Ansi.LMAGENTA)
+        log(
+            f"Fetching ranked status from Akatsuki for beatmap {beatmap_id}",
+            Ansi.LMAGENTA,
+        )
 
     try:
         url = "https://akatsuki.gg/api/v1/beatmaps"
@@ -106,11 +109,18 @@ async def api_get_ranked_status_from_akatsuki(beatmap_id: int) -> RankedStatus |
 
         if response.status_code == 200:
             response_data = response.json()
-            if response_data and isinstance(response_data, dict) and "ranked" in response_data:
+            if (
+                response_data
+                and isinstance(response_data, dict)
+                and "ranked" in response_data
+            ):
                 akatsuki_status = int(response_data["ranked"])
                 bancho_status = convert_akatsuki_ranked_status(akatsuki_status)
                 if app.settings.DEBUG:
-                    log(f"Got Akatsuki ranked status {akatsuki_status} → bancho {bancho_status.name} for beatmap {beatmap_id}", Ansi.LMAGENTA)
+                    log(
+                        f"Got Akatsuki ranked status {akatsuki_status} → bancho {bancho_status.name} for beatmap {beatmap_id}",
+                        Ansi.LMAGENTA,
+                    )
                 return bancho_status
 
         return None
@@ -735,11 +745,13 @@ class BeatmapSet:
                     new_map = new_maps[old_id]
 
                     # Try to get ranked status from Akatsuki only
-                    akatsuki_ranked_status = await api_get_ranked_status_from_akatsuki(old_id)
+                    akatsuki_ranked_status = await api_get_ranked_status_from_akatsuki(
+                        old_id,
+                    )
 
-                    if (
-                        old_map.md5 != new_map["file_md5"]
-                        or (akatsuki_ranked_status is not None and old_map.status != akatsuki_ranked_status)
+                    if old_map.md5 != new_map["file_md5"] or (
+                        akatsuki_ranked_status is not None
+                        and old_map.status != akatsuki_ranked_status
                     ):
                         # update map from old_maps
                         bmap = old_maps[old_id]
@@ -750,12 +762,18 @@ class BeatmapSet:
                             if akatsuki_ranked_status is not None:
                                 bmap.status = akatsuki_ranked_status
                                 if app.settings.DEBUG:
-                                    log(f"Using Akatsuki ranked status {akatsuki_ranked_status.name} for beatmap {old_id}", Ansi.LCYAN)
+                                    log(
+                                        f"Using Akatsuki ranked status {akatsuki_ranked_status.name} for beatmap {old_id}",
+                                        Ansi.LCYAN,
+                                    )
                             else:
                                 # Akatsuki failed, keep as UpdateAvailable
                                 bmap.status = RankedStatus.UpdateAvailable
                                 if app.settings.DEBUG:
-                                    log(f"Akatsuki API failed for beatmap {old_id}, status set to UpdateAvailable", Ansi.LYELLOW)
+                                    log(
+                                        f"Akatsuki API failed for beatmap {old_id}, status set to UpdateAvailable",
+                                        Ansi.LYELLOW,
+                                    )
 
                         updated_maps.append(bmap)
                     else:
@@ -772,17 +790,25 @@ class BeatmapSet:
                     bmap._parse_from_osuapi_resp(new_map)
 
                     # Try to get ranked status from Akatsuki only (no fallback)
-                    akatsuki_ranked_status = await api_get_ranked_status_from_akatsuki(bmap.id)
+                    akatsuki_ranked_status = await api_get_ranked_status_from_akatsuki(
+                        bmap.id,
+                    )
                     if akatsuki_ranked_status is not None:
                         # Successfully got status from Akatsuki, use it
                         bmap.status = akatsuki_ranked_status
                         if app.settings.DEBUG:
-                            log(f"Using Akatsuki ranked status {akatsuki_ranked_status.name} for new beatmap {bmap.id}", Ansi.LCYAN)
+                            log(
+                                f"Using Akatsuki ranked status {akatsuki_ranked_status.name} for new beatmap {bmap.id}",
+                                Ansi.LCYAN,
+                            )
                     else:
                         # Akatsuki failed, set to UpdateAvailable
                         bmap.status = RankedStatus.UpdateAvailable
                         if app.settings.DEBUG:
-                            log(f"Akatsuki API failed for new beatmap {bmap.id}, status set to UpdateAvailable", Ansi.LYELLOW)
+                            log(
+                                f"Akatsuki API failed for new beatmap {bmap.id}, status set to UpdateAvailable",
+                                Ansi.LYELLOW,
+                            )
 
                     # (some implementation-specific stuff not given by api)
                     bmap.frozen = False
@@ -1000,17 +1026,25 @@ class BeatmapSet:
 
                 # Try to get ranked status from Akatsuki only (no fallback)
                 if not bmap.frozen:
-                    akatsuki_ranked_status = await api_get_ranked_status_from_akatsuki(bmap.id)
+                    akatsuki_ranked_status = await api_get_ranked_status_from_akatsuki(
+                        bmap.id,
+                    )
                     if akatsuki_ranked_status is not None:
                         # Successfully got status from Akatsuki, use it
                         bmap.status = akatsuki_ranked_status
                         if app.settings.DEBUG:
-                            log(f"Using Akatsuki ranked status {akatsuki_ranked_status.name} for beatmap {bmap.id}", Ansi.LCYAN)
+                            log(
+                                f"Using Akatsuki ranked status {akatsuki_ranked_status.name} for beatmap {bmap.id}",
+                                Ansi.LCYAN,
+                            )
                     else:
                         # Akatsuki failed, set to UpdateAvailable
                         bmap.status = RankedStatus.UpdateAvailable
                         if app.settings.DEBUG:
-                            log(f"Akatsuki API failed for beatmap {bmap.id}, status set to UpdateAvailable", Ansi.LYELLOW)
+                            log(
+                                f"Akatsuki API failed for beatmap {bmap.id}, status set to UpdateAvailable",
+                                Ansi.LYELLOW,
+                            )
 
                 # (some implementation-specific stuff not given by api)
                 bmap.passes = 0
