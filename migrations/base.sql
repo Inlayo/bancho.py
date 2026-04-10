@@ -373,7 +373,7 @@ create index users_country_index
 	on users (country);
 
 insert into users (id, name, safe_name, priv, country, silence_end, email, pw_bcrypt, creation_time, latest_activity)
-values (1, 'BanchoBot', 'banchobot', 1, 'xx', 0, 'bot@inlayo.com',
+values (1, 'BanchoBot', 'banchobot', 1, 'kr', 0, 'bot@inlayo.com',
         'banchobot', UNIX_TIMESTAMP(), UNIX_TIMESTAMP());
 
 INSERT INTO stats (id, mode) VALUES (1, 0); # vn!std
@@ -395,7 +395,7 @@ alter table stats auto_increment = 3;
 insert into channels (name, topic, read_priv, write_priv, auto_join)
 values ('#osu', 'General discussion.', 1, 2, true),
 	   ('#announce', 'Exemplary performance and public announcements.', 1, 24576, true),
-	   ('#lobby', 'Multiplayer lobby discussion room.', 1, 2, false),
+	   ('#lobby', 'Multiplayer lobby discussion room.', 1, 2, false);
 
 insert into achievements (id, file, name, `desc`, cond) values (1, 'osu-skill-pass-1', 'Rising Star', 'Can''t go forward without the first steps.', '(score.mods & 1 == 0) and 1 <= score.sr < 2 and mode_vn == 0');
 insert into achievements (id, file, name, `desc`, cond) values (2, 'osu-skill-pass-2', 'Constellation Prize', 'Definitely not a consolation prize. Now things start getting hard!', '(score.mods & 1 == 0) and 2 <= score.sr < 3 and mode_vn == 0');
