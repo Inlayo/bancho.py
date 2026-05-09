@@ -1,0 +1,149 @@
+{% extends 'base.html' %} {% block title %} Clans {% endblock %} {% block content
+%}
+<link rel="stylesheet" href="/static/css/pages/settings/style.css" />
+<link rel="stylesheet" href="/static/css/pages/leaderboard.css" />
+
+<script src="/static/js/asserts/vue.js"></script>
+<script src="/static/js/asserts/vue-axios.js"></script>
+<script src="/static/js/asserts/vue-flags.js"></script>
+
+<div class="main-block">
+  {% include "clans/sidebar_clan.html" %}
+  <div class="block-content right">
+    <div id="general" class="single-right-block">
+      <div class="right-block-header">Clan Settings</div>
+      <form action="/clansettings" method="post" enctype="multipart/form-data" class="setting-block-content">
+        <div class="single-block-content">
+          <div class="block-content--left">
+            <div class="field-label is-normal">
+              <label class="label">Clantag</label>
+            </div>
+          </div>
+          <div class="block-content--right">
+            <div class="field-body">
+              <div class="field">
+                <p class="control">
+                  <input minlength="1" maxlength="6" id="clantag" class="input" type="text" name="clantag"
+                    value="{{ clanInfo['tag'] }}" />
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="single-block-content">
+          <div class="block-content--left">
+            <div class="field-label is-normal">
+              <label class="label">Clanname</label>
+            </div>
+          </div>
+          <div class="block-content--right">
+            <div class="field-body">
+              <div class="field">
+                <p class="control">
+                  <input minlength="2" maxlength="16" id="clanname" class="input" type="text" name="clanname"
+                    value="{{ clanInfo['name'] }}" />
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button id="submit-btn" class="button is-primary" type="submit">
+          <span>Save</span><span class="icon is-small"><i class="fas fa-check"></i></span>
+        </button>
+      </form>
+
+      <div style="text-align: center; margin-bottom: 10px;">
+        <input id="inviteLink" class="item" type="text"
+          value="https://{{ domain() }}/clans/invite/{{ clanInfo['invite'] }}"
+          style="text-align: center; background-color: rgba(0, 0, 0, 0.6); height: 22px;" disabled />
+      </div>
+
+      <div style="text-align: center; margin-top: 15px;">
+        <form action="/clansettings" method="POST">
+          <button id="genInvite" type="submit" class="ui right green button">
+            Generate a new invite!
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h1 style="text-align: center; margin-top: -300px; width: 750px">
+  <tr class="leaderboard-column">
+    {% for cm in clanMembers %}
+    <!-- <td class="column-player-name text-left">
+        <div style="text-align: center; display: flex; align-items: center;">
+          <div title="" class="windowFlags player-flag" cnt="{{ cm['country'] }}" style="background-image: url('/static/images/flags/{{ cm['country'] }}.png');"></div>
+          <div class="player-avatar" style="background-image: url('https://a.{{ domain() }}/{{ cm['id'] }}');"></div>        
+          <a target="_blank" href="https://{{ domain() }}/u/{{ cm['id'] }}">{{ cm['name'] }} ({{ cm['id'] }})</a>
+          <form action="/clansettings/k" method="POST">
+            <button name="member" value="{{ cm['id'] }}" class="ui right green button" style="width: 70px;">Kick</button>
+          </form>
+        </div>
+      </td> -->
+
+    <td class="column-player-name text-left">
+      <div style="
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          padding: 4px 0;
+        ">
+        <!-- <div title="" class="windowFlags player-flag" cnt="{{ cm['country'] }}"
+          style="background-image: url('/static/images/flags/{{ cm['country'] }}.png');"></div> -->
+        <div class="player-avatar" style="background-image: url('https://a.{{ domain() }}/{{ cm['id'] }}');"></div>
+        <a target="_blank" href="https://{{ domain() }}/u/{{ cm['id'] }}"
+          style="font-weight: bold; text-decoration: none; color: white">{{ cm['name'] }} ({{ cm['id'] }})</a>
+        <form action="/clansettings/k" method="POST" style="margin: 0">
+          <button name="member" value="{{ cm['id'] }}" class="ui right green button" style="width: 70px">
+            Kick
+          </button>
+        </form>
+      </div>
+    </td>
+    {% endfor %}
+  </tr>
+</h1>
+
+<script>
+  document.getElementById("inviteLink").style.width = document.getElementById("inviteLink").value.length * 7
+  document.getElementById("genInvite").style.width = document.getElementById("genInvite").innerText.length * 9
+  {% if not clanInfo %}
+  document.getElementById("clantag").disabled = true
+  document.getElementById("clanname").disabled = true
+  document.getElementById("submit-btn").disabled = true
+  document.getElementById("genInvite").disabled = true
+  {% endif %}
+
+  document.querySelectorAll('.windowFlags').forEach(el => {
+    const country = el.getAttribute('cnt');
+    if (window.flags && window.flags[country]) {
+      el.title = window.flags[country];
+    } else {
+      el.title = "Unknown";
+    }
+  });
+</script>
+
+{% if flash %}
+<div class="noti-banner noti-banner-warning">
+  <div class="container">
+    <div class="noti-column">
+      <div class="noti-col noti-col-icon"></div>
+      <div class="noti-col noti-col-label">
+        <div class="noti-bannertype">
+          {% if status=='error' %} Warning {% elif status=='success' %} Notice
+          {% endif %}
+        </div>
+        <div class="noti-bannertext">
+          {% if status=='error' %} Uh oh! Be careful! {% elif status=='success'
+          %} Hey! Listen! {% endif %}
+        </div>
+      </div>
+      <div class="noti-banner-text">{{ flash }}</div>
+    </div>
+  </div>
+</div>
+{% endif %} {% endblock %}

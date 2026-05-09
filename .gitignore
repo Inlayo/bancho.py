@@ -26,10 +26,5 @@ config.py
 .db-data/
 .redis-data/
 
-# external / tools / testing
-ext/
-tools/
-_testing/
-
 # poetry
 poetry.toml

@@ -1,0 +1,18 @@
+<div class="block-content left">
+  <div class="left-header">
+    <a href="/u/{{ session.user_data['id'] }}" class="user-avatar-header user-avatar"
+      style="background-image: url(https://a.{{ domain() }}/{{ session.user_data['id']}});"></a>
+    <div class="welcome-text">
+      <span class="username pink-bold">{{ session.user_data['name']}}</span>
+      <span class="welcome">Clans</span>
+    </div>
+  </div>
+  <div class="left-selector">
+    <a class="single-menu single-menu--active router-link"><!-- href="/clans"> -->
+      <i class="fas fa-trophy"></i><span class="single-menu--text"> Leaderboard (making...) </span>
+    </a>
+    <a class="single-menu single-menu--active router-link" href="/clansettings">
+      <i class="fas fa-gear"></i><span class="single-menu--text"> Clan Settings </span>
+    </a>
+  </div>
+</div>

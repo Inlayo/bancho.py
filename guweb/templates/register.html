@@ -1,0 +1,178 @@
+<meta name="description" content="Register on Inlayo" />
+<meta itemprop="name" content="Register - Inlayo" />
+<meta itemprop="description" content="Log on Inlayo" />
+<meta itemprop="image" content="https://{{ domain() }}/static/favicon/android-chrome-256x256.png" />
+<meta property="og:url" content="https://{{ domain() }}/register" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Register - Inlayo" />
+<meta property="og:description" content="Log on Inlayo" />
+<meta property="og:image" content="https://{{ domain() }}/static/favicon/android-chrome-256x256.png" />
+<meta name="twitter:title" content="Register - Inlayo" />
+<meta name="twitter:description" content="Log on Inlayo" />
+<meta name="twitter:image" content="https://{{ domain() }}/static/favicon/android-chrome-256x256.png" />
+
+{% extends "base.html" %} {% block title %} Register {% endblock %} {% block
+header %}
+<link rel="stylesheet" href="/static/css/pages/auth.css" />
+{% endblock %} {% block content %}
+<style>
+  .my-con {
+    margin-top: 18vh;
+  }
+</style>
+
+<script>
+  async function sendVerificationEmail() {
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const emailInput = document.getElementById("email");
+    const email = emailInput.value.trim().toLowerCase();
+    const sendBtn = document.getElementById("send-btn");
+    const registerBtn = document.getElementById("register-btn");
+    sendBtn.classList.add("is-loading");
+    sendBtn.disabled = true;
+
+    if (!email | !emailRegex.test(email)) {
+      sendBtn.classList.remove("is-loading");
+      sendBtn.disabled = false;
+      return alert("Please enter a valid email address.");
+    }
+
+    const formData = new FormData();
+    formData.append("user", document.getElementById("user").value);
+    formData.append("email", email);
+    try {
+      const response = await fetch("/register_emailchecksend", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Server responded with an error.");
+      }
+
+      const data = await response.text();
+      if (data === "sent") {
+        sendBtn.disabled = true;
+        registerBtn.disabled = false;
+        alert("Verification email sent successfully!");
+      } else if (!isNaN(data)) {
+        sendBtn.disabled = true;
+        registerBtn.disabled = false;
+        alert(
+          `Verification email has been sent. You can try again in ${data} seconds.`
+        );
+      } else if (data === "exist") {
+        emailInput.value = "";
+        sendBtn.disabled = false;
+        alert("This email is already registered.");
+      } else if (data.startsWith("ERROR | ")) {
+        sendBtn.disabled = false;
+        alert(`ERROR! report admin plz \n\n${data}`);
+      } else {
+        sendBtn.disabled = false;
+        alert("Failed to send verification email.");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("An error occurred. Please try again later.");
+    } finally {
+      sendBtn.classList.remove("is-loading");
+      sendBtn.disabled = false;
+    }
+  }
+</script>
+
+<div class="main-block is-marginless is-paddingless is-auth">
+  <div class="columns pm-reset is-weeb">
+    <div class="column title-block">
+      <h1 class="title" id="regtitle">Registration</h1>
+    </div>
+  </div>
+  <div class="columns pm-reset flex-lcenter is-block">
+    <div class="box">
+      <div class="login-bg"></div>
+      <form action="/register" method="post" class="form-content">
+        <div class="field">
+          <label for="user" class="label">Username</label>
+          <div class="control has-icons-left">
+            <input id="user" type="text" name="username" placeholder="e.g. Inlayo" class="input" autocomplete="username"
+              required />
+            <span class="icon is-small is-left">
+              <i class="fa fa-envelope"></i>
+            </span>
+          </div>
+        </div>
+        <div class="field">
+          <label for="email" class="label">Email</label>
+          <div class="control has-icons-left is-expanded">
+            <input id="email" type="email" name="email" placeholder="e.g. {{ SenderEmail }}" class="input"
+              autocomplete="email" required />
+            <span class="icon is-small is-left">
+              <i class="fa fa-lock"></i>
+            </span>
+            <button id="send-btn" type="button" class="button is-send" onclick="sendVerificationEmail()">
+              Send
+            </button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="verification" class="label">Email Verification</label>
+          <div class="control has-icons-left">
+            <input id="verification" type="text" name="emailkey" placeholder="*************" class="input" required />
+            <span class="icon is-small is-left">
+              <i class="fa fa-lock"></i>
+            </span>
+          </div>
+        </div>
+        <div class="field">
+          <label for="pass" class="label">Password</label>
+          <div class="control has-icons-left">
+            <input id="pass" type="password" name="password" placeholder="*************" class="input"
+              autocomplete="new-password" required />
+            <span class="icon is-small is-left">
+              <i class="fa fa-lock"></i>
+            </span>
+          </div>
+        </div>
+        <div class="field">
+          <label for="pass" class="label">Confirm Password</label>
+          <div class="control has-icons-left">
+            <input id="pass" type="password" name="confirm_password" placeholder="*************" class="input"
+              autocomplete="new-password" required />
+            <span class="icon is-small is-left">
+              <i class="fa fa-lock"></i>
+            </span>
+          </div>
+        </div>
+        <div class="mt-5"></div>
+        <div class="dialog">
+          Already have an account? <a href="/login">Login</a>
+        </div>
+        {% if not captchaKey() == 'changeme' %}
+        <div class="field">
+          <div class="h-captcha" data-sitekey="{{ captchaKey() }}" data-theme="dark"
+            style="display: flex; justify-content: center"></div>
+        </div>
+        {% endif %}
+        <div class="field">
+          <button id="register-btn" type="submit" class="button is-primary" disabled>
+            Register
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- bancho's Ingame Registaration -->
+<script>
+  const params = new URLSearchParams(location.search);
+  document.getElementById("user").value = params.get("username");
+  document.getElementById("email").value = params.get("email");
+</script>
+
+{% if flash %}
+<div class="paper-snackbar is-{{ status }}" style="opacity: 1">{{ flash }}</div>
+{% endif %} {% if not captchaKey() == 'changeme' %}
+<script src="https://hcaptcha.com/1/api.js" async defer></script>
+{% endif %} {% endblock %}

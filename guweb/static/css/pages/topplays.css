@@ -1,0 +1,92 @@
+html {
+    background-color: rgb(48, 48, 48);
+}
+
+@media screen and (max-width: 1024px) {
+    .my-con {
+        margin-top: 150px;
+    }
+}
+
+.user-block {
+    transition: .2s ease
+}
+
+.user-block:hover {
+    color: #fff;
+    transform: translateY(-5px)
+}
+
+.avatar-picture {
+    width: 70px;
+    border-radius: 6px;
+    margin-right: 8px
+}
+
+.profile-flag {
+    width: 18px
+}
+
+.user-artist,
+.user-mapper,
+.user-title {
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    font-size: 12
+}
+
+.user-artist {
+    font-size: 11px;
+    font-weight: 500
+}
+
+.user-block {
+    transition: .2s ease
+}
+
+.user-block {
+    display: flex;
+    border-radius: 8px;
+    padding: 12px;
+    font-weight: 700;
+    line-height: 1.3;
+    align-items: center;
+    overflow: hidden;
+    height: 105px;
+    width: 410px;
+    margin-top: 15px;
+}
+
+.user-stats {
+    flex: 1;
+    display: flex;
+    min-width: 0;
+    align-content: stretch;
+    align-items: center;
+    flex-direction: column
+}
+
+.user-block {
+    background: round;
+    color: #fff;
+}
+
+.mode-select {
+    cursor: pointer;
+    text-align: center;
+    padding-bottom: 2px;
+    margin-right: 12px;
+    color: #fff;
+    font-size: 15px;
+    margin-left: 12px;
+    opacity: 0.7;
+    transition: 0.2s ease;
+    content: center;
+}
+
+.mode-select:hover {
+    border-bottom-width: 6px;
+    opacity: 1;
+    font-weight: 600;
+}

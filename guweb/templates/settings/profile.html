@@ -1,0 +1,210 @@
+{% extends 'base.html' %} {% block title %} Profile {% endblock %} {% block
+content %}
+<link rel="stylesheet" href="/static/css/pages/settings/style.css" />
+
+<script>
+  async function sendVerificationEmail() {
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const emailInput = document.getElementById("email");
+    const email = emailInput.value.trim().toLowerCase();
+    const username = document.getElementById("username").value;
+    const sendBtn = document.getElementById("send-btn");
+    const submitBtn = document.getElementById("submit-btn");
+    const OEV = document.getElementById("OEV");
+    const NEV = document.getElementById("NEV");
+    OEV.removeAttribute("style");
+    sendBtn.classList.add("is-loading"); // add loading animation to button
+    sendBtn.disabled = true;
+
+    if (!email | !emailRegex.test(email)) {
+      OEV.style.display = "none";
+      sendBtn.classList.remove("is-loading");
+      sendBtn.disabled = false;
+      return alert("Please enter a valid email address.");
+    }
+
+    if ("{{ session.user_data['email'] }}" != email) {
+      OEV.querySelector("label").textContent = "Email Verification (old)";
+      NEV.removeAttribute("style");
+      document
+        .getElementById("newverification")
+        .setAttribute("required", "required");
+    }
+
+    const formData = new FormData();
+    formData.append("username", username);
+    formData.append("email", email);
+    try {
+      const response = await fetch("/settings/profile_emailchecksend", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Server responded with an error.");
+      }
+
+      let data = await response.text();
+
+      if (data === "NotChanges") {
+        sendBtn.disabled = false;
+        OEV.style.display = "none";
+        NEV.style.display = "none";
+        alert("No changes have been made.");
+      } else if (data.startsWith("exist")) {
+        sendBtn.disabled = false;
+        OEV.style.display = "none";
+        NEV.style.display = "none";
+        alert("Your new email already taken by another user.");
+      } else {
+        data = JSON.parse(data);
+        console.log(data);
+        detail(data, submitBtn, sendBtn, OEV, NEV); // Use only one of two conditions
+        //simple(data, submitBtn, sendBtn, OEV, NEV) // Use only one of two conditions
+      }
+    } catch (error) {
+      OEV.style.display = "none";
+      NEV.style.display = "none";
+      console.error("Error:", error);
+      alert(`An error occurred. Please try again later. \n\n${error}`);
+    } finally {
+      sendBtn.classList.remove("is-loading");
+      sendBtn.disabled = false;
+    }
+  }
+</script>
+<script src="/static/js/pages/settings/profile_alert.js"></script>
+<!-- Load detail, simple functions -->
+
+<div class="main-block">
+  {% include "settings/sidebar.html" %}
+  <div class="block-content right">
+    <div id="general" class="single-right-block">
+      <div class="right-block-header">User Infomation</div>
+      <form action="/settings/profile" method="post" class="setting-block-content">
+        <div class="single-block-content">
+          <div class="block-content--left">
+            <div class="field-label is-normal">
+              <label class="label">Username</label>
+            </div>
+          </div>
+          <div class="block-content--right">
+            <div class="field-body">
+              <div class="field">
+                <p class="control">
+                  <input id="username" class="input" type="text" name="username"
+                    value="{{ session.user_data['name'] }}" /><!-- {% if not session.user_data['is_donator'] %}readonly{% endif %} -->
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="single-block-content">
+          <div class="block-content--left">
+            <div class="field-label is-normal">
+              <label class="label">Email</label>
+            </div>
+          </div>
+          <div class="block-content--right">
+            <div class="field-body">
+              <div class="field">
+                <div class="control is-expanded">
+                  <input id="email" type="email" name="email" value="{{ session.user_data['email'] }}" class="input"
+                    autocomplete="email" required />
+                  <button id="send-btn" type="button" class="button is-send" onclick="sendVerificationEmail()">
+                    Send
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Added -->
+        <div id="OEV" class="single-block-content" style="display: none">
+          <div class="block-content--left">
+            <div class="field-label is-normal">
+              <label class="label">Email Verification</label>
+            </div>
+          </div>
+          <div class="block-content--right">
+            <div class="field-body">
+              <div class="field">
+                <p class="control">
+                  <input id="oldverification" type="text" name="oldemailkey" placeholder="*************" class="input"
+                    required />
+                  <!-- <span class="icon is-small is-left">
+                    <i class="fa fa-lock"></i>
+                  </span> -->
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="NEV" class="single-block-content" style="display: none">
+          <div class="block-content--left">
+            <div class="field-label is-normal">
+              <label class="label">Email Verification (new)</label>
+            </div>
+          </div>
+          <div class="block-content--right">
+            <div class="field-body">
+              <div class="field">
+                <p class="control">
+                  <input id="newverification" type="text" name="newemailkey" placeholder="*************"
+                    class="input" />
+                  <!-- <span class="icon is-small is-left">
+                    <i class="fa fa-lock"></i>
+                  </span> -->
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Disabled - Username AKA doesn't exist in gulag? (for now?)
+        <div class="single-block-content">
+          <div class="block-content--left">
+            <div class="field-label is-normal">
+              <label class="label">name aka</label>
+            </div>
+          </div>
+          <div class="block-content--right">
+            <div class="field-body">
+              <div class="field">
+                <p class="control">
+                  <input class="input" type="aka" value="">
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        -->
+        <button id="submit-btn" class="button is-primary" type="submit" disabled>
+          <span>Save</span><span class="icon is-small"><i class="fas fa-check"></i></span>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% if flash %}
+<div class="noti-banner noti-banner-warning">
+  <div class="container">
+    <div class="noti-column">
+      <div class="noti-col noti-col-icon"></div>
+      <div class="noti-col noti-col-label">
+        <div class="noti-bannertype">
+          {% if status=='error' %} Warning {% elif status=='success' %} Notice
+          {% endif %}
+        </div>
+        <div class="noti-bannertext">
+          {% if status=='error' %} Uh oh! Be careful! {% elif status=='success'
+          %} Hey! Listen! {% endif %}
+        </div>
+      </div>
+      <div class="noti-banner-text">{{ flash }}</div>
+    </div>
+  </div>
+</div>
+{% endif %} {% endblock %}

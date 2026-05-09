@@ -1,0 +1,112 @@
+<!-- HTML Meta Tags -->
+<meta name="description" content="Inlayo">
+<meta property="og:image" content="https://osu.{{ domain() }}/static/favicon/android-chrome-256x256.png">
+
+<!-- Google / Search Engine Tags -->
+<meta itemprop="name" content="Inlayo">
+<meta itemprop="description"
+  content="Inlayo is an osu! private server mainly based around the relax mod featuring score submission, leaderboards & rankings, custom pp, and much more for relax, autopilot and vanilla osu!">
+<meta itemprop="image" content="https://osu.{{ domain() }}/static/favicon/android-chrome-256x256.png">
+
+<!-- Facebook Meta Tags -->
+<meta property="og:url" content="https://osu.{{ domain() }}/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Inlayo">
+<meta property="og:description"
+  content="Inlayo is an osu! private server mainly based around the relax mod featuring score submission, leaderboards & rankings, custom pp, and much more for relax, autopilot and vanilla osu!">
+<meta property="og:image" content="https://osu.{{ domain() }}/static/favicon/android-chrome-256x256.png">
+
+<!-- Twitter Meta Tags -->
+<meta name="twitter:title" content="Inlayo">
+<meta name="twitter:description"
+  content="Inlayo is an osu! private server mainly based around the relax mod featuring score submission, leaderboards & rankings, custom pp, and much more for relax, autopilot and vanilla osu!">
+<meta name="twitter:image" content="https://osu.{{ domain() }}/static/favicon/android-chrome-256x256.png">
+
+{% extends 'base.html' %}
+{% block title %} Home {% endblock %}
+
+{% block header %}
+<script src="/static/js/asserts/vue.js"></script>
+<script src="/static/js/asserts/vue-axios.js"></script>
+<script>
+  var domain = "{{ domain() }}";
+</script>
+<link rel="stylesheet" href="/static/css/pages/home.css">
+{% endblock %}
+
+{% block content %}
+
+{% if flash %}
+<div class='noti-banner noti-banner-warning'>
+  <div class="container">
+    <div class="noti-column">
+      <div class='noti-col noti-col-icon'></div>
+      <div class='noti-col noti-col-label'>
+        <div class='noti-bannertype'>
+          {% if status=='error' %}
+          Warning
+          {% elif status=='success' %}
+          Notice
+          {% endif %}
+        </div>
+        <div class='noti-bannertext'>
+          {% if status=='error' %}
+          Uh oh! Be careful!
+          {% elif status=='success' %}
+          Hey! Listen!
+          {% endif %}
+        </div>
+      </div>
+      <div class='noti-banner-text'>
+        {{ flash }}
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<center id="home-app">
+  <div class="hero p-less is-fullheight-with-navbar" id="home-hero">
+    <div class="container flex">
+      <div class="columns flex-vcenter">
+        <div class="column flex-vcenter flex-lcenter is-size-2-desktop is-size-1-fullhd" id="title" style="zoom: 1.1">
+          <h1 class="title is-spaced is-size-2-desktop is-size-1-fullhd">
+            <div class="navbar-logo-img" style="width: 478px; height: 150px; margin-bottom:40px">
+          </h1>
+          <h2 class="subtitle">
+            Welcome to Inlayo, the osu! private server<br />
+            We offer a vanilla, autopilot & relax osu! experience.
+            <br /><br />
+            Join our <a href="/discord">Discord</a> for the latest updates!<br />
+          </h2>
+          {% if not session.authenticated %}
+          <div class="buttons flex-lcenter">
+            <a class="button is-primary" href="/register">
+              <strong>Sign up</strong>
+            </a>
+            <a class="button is-light" href="/login">
+              Log in
+            </a>
+          </div>
+          {% endif %}
+          <div id="users" class="users">
+            <div class="user-counter">
+              <span style="color: #68d57f">
+                <% online_users %>
+              </span> online users
+            </div>
+            <div class="user-counter">
+              <span style="color: #e7556b">
+                <% registered_users %>
+              </span> registered users
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</center>
+
+<script src="/static/js/pages/home.js"></script>
+
+{% endblock %}
