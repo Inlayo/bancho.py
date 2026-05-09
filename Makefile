@@ -51,3 +51,6 @@ uninstall:
 # https://python-poetry.org/docs/cli/#version
 bump:
 	poetry version $(version)
+
+guweb:
+	cd guweb && pm2 start main.py --name guweb
