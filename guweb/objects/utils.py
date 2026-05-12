@@ -58,7 +58,7 @@ def flashrect(
     template: str = "",
     isGet: bool = False,
     **kwargs: Any,
-) -> dict[str, Any] | str:
+) -> dict[str, Any] | str | Any:
     """
     flash() + redirect()
     - isGet=False: save flash data to session and redirect
@@ -84,8 +84,8 @@ def flashrect(
 
 async def render_template_flashrect(
     template_name_or_list: str | list[str],
-    **context,
-) -> str:
+    **context: Any,
+) -> Any:
     """(CUSTOM VER) Render the template with the context given.
     Arguments:
         template_name_or_list: Template name to render of a list of
@@ -93,7 +93,8 @@ async def render_template_flashrect(
         context: The variables to pass to the template.
     """
     flash = flashrect(isGet=True)
-    context = {**context, **flash}
+    if isinstance(flash, dict):
+        context = {**context, **flash}
     log2.debug(f"flashrect() = {flash}")
     return await render_template(template_name_or_list, **context)
 
@@ -217,20 +218,20 @@ BACKGROUND_PATH = Path.cwd() / ".data/backgrounds"
 
 def has_profile_customizations(user_id: int = 0) -> dict[str, bool]:
     # check for custom banner image file
+    has_custom_banner = False
     for ext in ("jpg", "jpeg", "png", "gif"):
         path = BANNERS_PATH / f"{user_id}.{ext}"
-        if has_custom_banner := path.exists():
+        if path.exists():
+            has_custom_banner = True
             break
-    else:
-        has_custom_banner = False
 
     # check for custom background image file
+    has_custom_background = False
     for ext in ("jpg", "jpeg", "png", "gif"):
         path = BACKGROUND_PATH / f"{user_id}.{ext}"
-        if has_custom_background := path.exists():
+        if path.exists():
+            has_custom_background = True
             break
-    else:
-        has_custom_background = False
 
     return {"banner": has_custom_banner, "background": has_custom_background}
 

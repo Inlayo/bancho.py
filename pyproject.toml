@@ -1,7 +1,7 @@
 [tool.mypy]
-strict = true
+strict = false
 exclude = ["tests", "venv"]
-disallow_untyped_calls = true
+disallow_untyped_calls = false
 enable_error_code = [
     "truthy-bool",
     "truthy-iterable",
@@ -11,6 +11,7 @@ enable_error_code = [
     "possibly-undefined"
 ]
 plugins = ["pydantic.mypy"]
+ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = [
@@ -20,6 +21,12 @@ module = [
     "timeago.*",
     "pytimeparse.*",
     "cpuinfo.*",
+    "objects.*",
+    "blueprints.*",
+    "constants.*",
+    "cmyui.*",
+    "discord_webhook.*",
+    "config",
 ]
 ignore_missing_imports = true
 

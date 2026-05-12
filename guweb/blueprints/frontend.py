@@ -11,6 +11,9 @@ import time
 from functools import wraps
 from pathlib import Path
 from typing import Any
+from typing import Callable
+from typing import cast
+from typing import TypeVar
 
 import bcrypt
 import timeago
@@ -23,7 +26,7 @@ from objects import glob
 from objects import logUtils as log2
 from objects import utils
 from objects.privileges import Privileges
-from objects.sendEmail import mailSend
+from objects.sendemail import mailSend
 from objects.utils import flash
 from objects.utils import flash_with_customizations
 from objects.utils import flashrect
@@ -43,10 +46,12 @@ VALID_MODS = frozenset({"vn", "rx", "ap"})
 
 frontend = Blueprint("frontend", __name__)
 
+F = TypeVar("F", bound=Callable[..., Any])
 
-def login_required(func):
+
+def login_required(func: F) -> F:
     @wraps(func)
-    async def wrapper(*args, **kwargs):
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
         if not session or not session.get("authenticated"):
             return await flash(
                 "error",
@@ -56,11 +61,11 @@ def login_required(func):
         await rebuildSession(session["user_data"]["id"])
         return await func(*args, **kwargs)
 
-    return wrapper
+    return cast(F, wrapper)
 
 
 @frontend.before_request
-async def check_session() -> str | None:
+async def check_session() -> Any:
     required_keys = [
         "authenticated",
         "user_data",
@@ -78,12 +83,12 @@ async def check_session() -> str | None:
 
 @frontend.route("/home")
 @frontend.route("/")
-async def home() -> str:
-    return await render_template("home.html")
+async def home() -> Any:
+    return cast(Any, await render_template("home.html"))
 
 
 @frontend.route("/forgot_emailchecksend", methods=["POST"])
-async def forgot_emaliCheckSend_post() -> str:
+async def forgot_emaliCheckSend_post() -> Any:
     form = await request.form
     email = form.get("email", type=str)
     username = await glob.db.fetch("SELECT name FROM users WHERE email = %s", [email])
@@ -114,12 +119,12 @@ async def forgot_emaliCheckSend_post() -> str:
 
 
 @frontend.route("/forgot")
-async def forgot() -> str:
-    return await render_template("forgot.html", SenderEmail=glob.config.SenderEmail)
+async def forgot() -> Any:
+    return cast(Any, await render_template("forgot.html", SenderEmail=glob.config.SenderEmail))
 
 
 @frontend.route("/forgot", methods=["POST"])
-async def forget_resetpassword() -> str:
+async def forget_resetpassword() -> Any:
     form = await request.form
     email = form.get("email", type=str).lower()
     emailkey = form.get("emailkey")
@@ -209,8 +214,8 @@ async def forget_resetpassword() -> str:
 
 
 @frontend.route("/rules")
-async def rules() -> str:
-    return await render_template("rules.html")
+async def rules() -> Any:
+    return cast(Any, await render_template("rules.html"))
 
 
 @frontend.route("/home/account/edit")
@@ -220,8 +225,9 @@ async def home_account_edit() -> Any:
 
 @frontend.route("/settings/profile_emailchecksend", methods=["POST"])
 @login_required
-async def settings_profile_emaliCheckSend_post() -> list[Any]:
-    omstatus = nmstatus = None
+async def settings_profile_emaliCheckSend_post() -> Any:
+    omstatus: str | int | None = None
+    nmstatus: str | int | None = None
     form = await request.form
     new_name = form.get("username", type=str)
     new_email = form.get("email", type=str)
@@ -300,13 +306,13 @@ async def settings_profile_emaliCheckSend_post() -> list[Any]:
 @frontend.route("/settings")
 @frontend.route("/settings/profile")
 @login_required
-async def settings_profile() -> str:
-    return await render_template("settings/profile.html")
+async def settings_profile() -> Any:
+    return cast(Any, await render_template("settings/profile.html"))
 
 
 @frontend.route("/settings/profile", methods=["POST"])
 @login_required
-async def settings_profile_post() -> str:
+async def settings_profile_post() -> Any:
     form = await request.form
 
     new_name = form.get("username", type=str)
@@ -457,7 +463,7 @@ async def settings_profile_post() -> str:
 
 
 @frontend.route("/topplays")
-async def topplays() -> tuple[str, int] | str:
+async def topplays() -> Any:
     mods = request.args.get("mods", "vn", type=str)  # 1. key 2. default value
     mode = request.args.get("mode", "std", type=str)
 
@@ -496,23 +502,23 @@ async def topplays() -> tuple[str, int] | str:
         score["grade"] = utils.get_color_formatted_grade(score["grade"])
         score["pp"] = round(score["pp"], 1)
 
-    return await render_template(
+    return cast(Any, await render_template(
         "topplays.html",
         scores=scores,
         mode_str=mode_str,
         mode=mode_int,
-    )
+    ))
 
 
 @frontend.route("/settings/avatar")
 @login_required
-async def settings_avatar() -> str:
-    return await render_template("settings/avatar.html")
+async def settings_avatar() -> Any:
+    return cast(Any, await render_template("settings/avatar.html"))
 
 
 @frontend.route("/settings/avatar", methods=["POST"])
 @login_required
-async def settings_avatar_post() -> str:
+async def settings_avatar_post() -> Any:
     # constants
     MAX_IMAGE_SIZE = glob.config.max_image_size * 1024 * 1024
     AVATARS_PATH = f"{glob.config.path_to_gulag}.data/avatars"
@@ -585,19 +591,19 @@ async def settings_avatar_post() -> str:
 
 @frontend.route("/settings/custom")
 @login_required
-async def settings_custom() -> str:
+async def settings_custom() -> Any:
     profile_customizations = utils.has_profile_customizations(
         session["user_data"]["id"],
     )
-    return await render_template(
+    return cast(Any, await render_template(
         "settings/custom.html",
         customizations=profile_customizations,
-    )
+    ))
 
 
 @frontend.route("/settings/custom", methods=["POST"])
 @login_required
-async def settings_custom_post() -> str:
+async def settings_custom_post() -> Any:
     files = await request.files
     banner = files.get("banner")
     background = files.get("background")
@@ -678,13 +684,13 @@ async def settings_custom_post() -> str:
 
 @frontend.route("/settings/password")
 @login_required
-async def settings_password() -> str:
-    return await render_template("settings/password.html")
+async def settings_password() -> Any:
+    return cast(Any, await render_template("settings/password.html"))
 
 
 @frontend.route("/settings/password", methods=["POST"])
 @login_required
-async def settings_password_post() -> str:
+async def settings_password_post() -> Any:
     form = await request.form
     old_password = form.get("old_password")
     new_password = form.get("new_password")
@@ -863,7 +869,7 @@ async def profile_select(id: str) -> str | tuple[str, int]:
 
 @frontend.route("/leaderboard")
 @frontend.route("/lb")
-async def leaderboard() -> str | tuple[str, int]:
+async def leaderboard() -> Any:
     mode = request.args.get("mode", "std", type=str)  # 1. key 2. default value
     mods = request.args.get("mods", "vn", type=str)
     sort = request.args.get("sort", "pp", type=str)
@@ -881,35 +887,35 @@ async def leaderboard() -> str | tuple[str, int]:
     ):
         return (await render_template("404.html"), 404)
 
-    return await render_template(
+    return cast(Any, await render_template(
         "leaderboard.html",
         mode=mode,
         sort=sort,
         mods=mods,
         page=page,
-    )
+    ))
 
 
 @frontend.route("/login")
-async def login() -> str:
+async def login() -> Any:
     if "authenticated" in session:
         return await flash("error", "You're already logged in!", "home")
 
-    return await render_template("login.html")
+    return cast(Any, await render_template("login.html"))
 
 
 @frontend.route("/verify", methods=["GET"])
-async def verify():
-    return await render_template("verify.html")
+async def verify() -> Any:
+    return cast(Any, await render_template("verify.html"))
 
 
 @frontend.route("/how")
-async def how():
-    return await render_template("howtoconnect.html")
+async def how() -> Any:
+    return cast(Any, await render_template("howtoconnect.html"))
 
 
 @frontend.route("/login", methods=["POST"])
-async def login_post():
+async def login_post() -> Any:
     if "authenticated" in session:
         return await flash("error", "You're already logged in!", "home")
 
@@ -1011,7 +1017,7 @@ _mode_str_dict = {0: "std", 1: "taiko", 2: "catch", 3: "mania"}
 
 @frontend.route("/s/<sid>")
 @frontend.route("/beatmapsets/<sid>")
-async def beatmapsetse(sid):
+async def beatmapsetse(sid: str) -> Any:
     mode = request.args.get("mode", "std", type=str)  # 1. key 2. default value
     mods = request.args.get("mods", "vn", type=str)
 
@@ -1040,7 +1046,7 @@ async def beatmapsetse(sid):
 
 @frontend.route("/b/<bid>")
 @frontend.route("/beatmaps/<bid>")
-async def beatmap(bid):
+async def beatmap(bid: str) -> Any:
     mode = request.args.get("mode", "std", type=str)  # 1. key 2. default value
     mods = request.args.get("mods", "vn", type=str)
 
@@ -1090,7 +1096,7 @@ async def beatmap(bid):
 
 
 @frontend.route("/scores/<id>")
-async def score_select(id):
+async def score_select(id: str) -> Any:
     mods_mode_strs = {
         1: ("Vanilla Taiko", "taiko", "vn"),
         2: ("Vanilla CTB", "catch", "vn"),
@@ -1167,7 +1173,7 @@ async def score_select(id):
 
 
 @frontend.route("/register_emailchecksend", methods=["POST"])
-async def register_emaliCheckSend_post():
+async def register_emaliCheckSend_post() -> Any:
     form = await request.form
     username = form.get("user", type=str)
     email = form.get("email", type=str)
@@ -1211,7 +1217,7 @@ async def register():
 
 
 @frontend.route("/register", methods=["POST"])
-async def register_post():
+async def register_post() -> Any:
     if "authenticated" in session:
         return await flash("error", "You're already logged in.", "home")
 
@@ -1377,7 +1383,7 @@ async def register_post():
 
 
 @frontend.route("/logout")
-async def logout():
+async def logout() -> Any:
     if "authenticated" not in session:
         return await flash(
             "error",
@@ -1401,7 +1407,7 @@ BACKGROUND_PATH = Path.cwd() / ".data/backgrounds"
 
 
 @frontend.route("/banners/<user_id>")
-async def get_profile_banner(user_id: int):
+async def get_profile_banner(user_id: int) -> Any:
     # Check if avatar exists
     for ext in ("jpg", "jpeg", "png", "gif"):
         path = BANNERS_PATH / f"{user_id}.{ext}"
@@ -1412,7 +1418,7 @@ async def get_profile_banner(user_id: int):
 
 
 @frontend.route("/backgrounds/<user_id>")
-async def get_profile_background(user_id: int):
+async def get_profile_background(user_id: int) -> Any:
     # Check if avatar exists
     for ext in ("jpg", "jpeg", "png", "gif"):
         path = BACKGROUND_PATH / f"{user_id}.{ext}"

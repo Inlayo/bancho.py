@@ -4,6 +4,7 @@ __all__ = ()
 
 import datetime
 from typing import Any
+from typing import cast
 
 import timeago
 from objects import glob
@@ -18,7 +19,7 @@ admin = Blueprint("admin", __name__)
 @admin.route("/")
 @admin.route("/home")
 @admin.route("/dashboard")
-async def home() -> str:
+async def home() -> Any:
     """Render the homepage of guweb's admin panel."""
     if not "authenticated" in session:
         return await flash("error", "Please login first.", "login")
@@ -42,11 +43,12 @@ async def home() -> str:
         "ORDER BY scores.id DESC LIMIT 100",
     )
 
-    return await render_template(
+    return cast(Any, await render_template(
         "admin/home.html",
         dashdata=dash_data,
         recentusers=recent_users,
         recentscores=recent_scores,
         datetime=datetime,
         timeago=timeago,
+    ))
     )

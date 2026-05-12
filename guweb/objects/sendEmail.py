@@ -22,7 +22,13 @@ def exceptionE(msg: str = "") -> str:
     return e
 
 
-def mailSend(nick: str, to_email: str, subject: str, body: str, type: str = " ") -> int | str:
+def mailSend(
+    nick: str,
+    to_email: str,
+    subject: str,
+    body: str,
+    type: str = " ",
+) -> int | str:
     sc: int | str = 200
     msg = MIMEMultipart()
     msg["From"] = f"Inlayo <{sender_email}>"
@@ -49,7 +55,7 @@ def mailSend(nick: str, to_email: str, subject: str, body: str, type: str = " ")
             imap = imaplib.IMAP4_SSL(**glob.config.IMAP_serverInfo)
             imap.login(sender_email, sender_password)
             msg_bytes = msg.as_bytes()
-            imap.append("Sent", None, None, msg_bytes)
+            imap.append("Sent", "", None, msg_bytes)
             log.info("Sent mail folder copied successfully!")
         else:
             log.warning("Sent mail folder copy skipped due to email send failure")
