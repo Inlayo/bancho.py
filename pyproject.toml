@@ -79,6 +79,10 @@ coverage = "^7.4.1"
 databases = { version = "^0.8.0", extras = ["mysql"] }
 python-json-logger = "^2.0.7"
 anyio = "^4.9.0"
+quart = "^0.20.0"
+aiohttp = "^3.13.5"
+discord-webhook = "^1.4.1"
+pillow = "^12.2.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "3.6.1"

@@ -1,66 +1,90 @@
-# -*- coding: utf-8 -*-
+from __future__ import annotations
 
-from typing import Optional
+from pathlib import Path
 from typing import TYPE_CHECKING
+from typing import Optional
 
 from cmyui.logging import Ansi
 from cmyui.logging import log
-from pathlib import Path
-from quart import render_template
+from objects import glob
+from objects import logUtils as log2
+from objects import utils
+from objects.privileges import Privileges
 from quart import redirect
+from quart import render_template
 from quart import session
 
-from objects import glob
-from objects import utils
-from objects import logUtils as log2
-from objects.privileges import Privileges
+if TYPE_CHECKING:
+    from PIL.Image import Image
 
-if TYPE_CHECKING: from PIL.Image import Image
 
 async def rebuildSession(userID: int) -> dict:
-    def rt(sess): session.update(sess); log2.debug(f"rebuildSession() session | {session}"); return sess
+    def rt(sess):
+        session.update(sess)
+        log2.debug(f"rebuildSession() session | {session}")
+        return sess
+
     flash_data = session["flash_data"]
-    session.clear(); sess = {"_permanent": True}
+    session.clear()
+    sess = {"_permanent": True}
     user_info = await glob.db.fetch(
-        'SELECT id, name, email, priv, pw_bcrypt, country, silence_end, donor_end '
-        'FROM users '
-        'WHERE id = %s ', [userID]
+        "SELECT id, name, email, priv, pw_bcrypt, country, silence_end, donor_end "
+        "FROM users "
+        "WHERE id = %s ",
+        [userID],
     )
-    if not user_info or user_info['id'] == 1: return rt(sess)
-    sess['authenticated'] = True
-    sess['user_data'] = {
-        'id': user_info['id'],
-        'name': user_info['name'],
-        'email': user_info['email'],
-        'priv': user_info['priv'],
+    if not user_info or user_info["id"] == 1:
+        return rt(sess)
+    sess["authenticated"] = True
+    sess["user_data"] = {
+        "id": user_info["id"],
+        "name": user_info["name"],
+        "email": user_info["email"],
+        "priv": user_info["priv"],
         "country": user_info["country"],
-        'silence_end': user_info['silence_end'],
+        "silence_end": user_info["silence_end"],
         "donor_end": user_info["donor_end"],
-        'is_staff': user_info['priv'] & Privileges.Staff != 0,
-        'is_donator': user_info['priv'] & Privileges.Donator != 0
+        "is_staff": user_info["priv"] & Privileges.Staff != 0,
+        "is_donator": user_info["priv"] & Privileges.Donator != 0,
     }
     session["flash_data"] = flash_data if flash_data else {}
     return rt(sess)
-def flashrect(status: str="", msg: str="", template: str="", isGet: bool=False, **kwargs):
+
+
+def flashrect(
+    status: str = "",
+    msg: str = "",
+    template: str = "",
+    isGet: bool = False,
+    **kwargs,
+):
     """
     flash() + redirect()
     - isGet=False: save flash data to session and redirect
     - isGet=True: get flash data from session
     """
     if isGet:
-        d = session.get("flash_data", {}); session["flash_data"] = {} # get from session only once and initialize
-        if not d: return d
+        d = session.get("flash_data", {})
+        session["flash_data"] = {}  # get from session only once and initialize
+        if not d:
+            return d
         return {"flash": d.get("msg"), "status": d.get("status"), **d.get("kwargs", {})}
     else:
-        if not msg and not status and not template: raise KeyError("for test")
+        if not msg and not status and not template:
+            raise KeyError("for test")
         session["flash_data"] = {
             "msg": msg,
             "status": status,
             "kwargs": kwargs,
-            "template": template
+            "template": template,
         }
         return redirect(template)
-async def render_template_flashrect(template_name_or_list: str | list[str], **context) -> str:
+
+
+async def render_template_flashrect(
+    template_name_or_list: str | list[str],
+    **context,
+) -> str:
     """(CUSTOM VER) Render the template with the context given.
     Arguments:
         template_name_or_list: Template name to render of a list of
@@ -81,7 +105,7 @@ async def flash(status: str, msg: str, template: str, **kwargs) -> str:
 async def flash_with_customizations(status: str, msg: str, template: str) -> str:
     """Flashes a success/error message on a specified template. (for customisation settings)"""
     profile_customizations = utils.has_profile_customizations(
-        session["user_data"]["id"]
+        session["user_data"]["id"],
     )
     return await render_template(
         template_name_or_list=f"{template}.html",
@@ -99,7 +123,7 @@ def get_safe_name(name: str) -> str:
     return name.lower().replace(" ", "_")
 
 
-def convert_mode_int(mode: str) -> Optional[int]:
+def convert_mode_int(mode: str) -> int | None:
     """Converts mode (str) to mode (int)."""
     if mode not in _str_mode_dict:
         print("invalid mode passed into utils.convert_mode_int?")
@@ -110,7 +134,7 @@ def convert_mode_int(mode: str) -> Optional[int]:
 _str_mode_dict = {"std": 0, "taiko": 1, "catch": 2, "mania": 3}
 
 
-def convert_mode_str(mode: int) -> Optional[str]:
+def convert_mode_str(mode: int) -> str | None:
     """Converts mode (int) to mode (str)."""
     if mode not in _mode_str_dict:
         print("invalid mode passed into utils.convert_mode_str?")
@@ -210,7 +234,7 @@ def has_profile_customizations(user_id: int = 0) -> dict[str, bool]:
     return {"banner": has_custom_banner, "background": has_custom_background}
 
 
-def crop_image(image: "Image") -> "Image":
+def crop_image(image: Image) -> Image:
     width, height = image.size
     if width == height:
         return image
@@ -224,7 +248,9 @@ def crop_image(image: "Image") -> "Image":
 
     return image
 
-#icon info > https://semantic-ui.com/elements/icon.html
+
+# icon info > https://semantic-ui.com/elements/icon.html
+
 
 def get_user_badges(uid: int, privs: int):
     group_list = []
@@ -295,13 +321,13 @@ def get_difficulty_colour_spectrum(diff_value):
         proportion = (diff_value - prev_value) / (next_value - prev_value)
 
         red = int(prev_color[1:3], 16) + int(
-            (int(next_color[1:3], 16) - int(prev_color[1:3], 16)) * proportion
+            (int(next_color[1:3], 16) - int(prev_color[1:3], 16)) * proportion,
         )
         green = int(prev_color[3:5], 16) + int(
-            (int(next_color[3:5], 16) - int(prev_color[3:5], 16)) * proportion
+            (int(next_color[3:5], 16) - int(prev_color[3:5], 16)) * proportion,
         )
         blue = int(prev_color[5:7], 16) + int(
-            (int(next_color[5:7], 16) - int(prev_color[5:7], 16)) * proportion
+            (int(next_color[5:7], 16) - int(prev_color[5:7], 16)) * proportion,
         )
 
         return f"#{red:02X}{green:02X}{blue:02X}"
