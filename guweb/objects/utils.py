@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING
+from typing import Any
 from typing import Optional
 
 from cmyui.logging import Ansi
@@ -18,15 +19,15 @@ if TYPE_CHECKING:
     from PIL.Image import Image
 
 
-async def rebuildSession(userID: int) -> dict:
-    def rt(sess):
+async def rebuildSession(userID: int) -> dict[str, Any]:
+    def rt(sess: dict[str, Any]) -> dict[str, Any]:
         session.update(sess)
         log2.debug(f"rebuildSession() session | {session}")
         return sess
 
-    flash_data = session["flash_data"]
+    flash_data = session.get("flash_data", {})
     session.clear()
-    sess = {"_permanent": True}
+    sess: dict[str, Any] = {"_permanent": True}
     user_info = await glob.db.fetch(
         "SELECT id, name, email, priv, pw_bcrypt, country, silence_end, donor_end "
         "FROM users "
@@ -56,8 +57,8 @@ def flashrect(
     msg: str = "",
     template: str = "",
     isGet: bool = False,
-    **kwargs,
-):
+    **kwargs: Any,
+) -> dict[str, Any] | str:
     """
     flash() + redirect()
     - isGet=False: save flash data to session and redirect
@@ -127,7 +128,7 @@ def convert_mode_int(mode: str) -> int | None:
     """Converts mode (str) to mode (int)."""
     if mode not in _str_mode_dict:
         print("invalid mode passed into utils.convert_mode_int?")
-        return
+        return None
     return _str_mode_dict[mode]
 
 
@@ -138,7 +139,7 @@ def convert_mode_str(mode: int) -> str | None:
     """Converts mode (int) to mode (str)."""
     if mode not in _mode_str_dict:
         print("invalid mode passed into utils.convert_mode_str?")
-        return
+        return None
     return _mode_str_dict[mode]
 
 
@@ -242,9 +243,9 @@ def crop_image(image: Image) -> Image:
     offset = int(abs(height - width) / 2)
 
     if width > height:
-        image = image.crop([offset, 0, width - offset, height])
+        image = image.crop((offset, 0, width - offset, height))
     else:
-        image = image.crop([0, offset, width, height - offset])
+        image = image.crop((0, offset, width, height - offset))
 
     return image
 
@@ -252,8 +253,8 @@ def crop_image(image: Image) -> Image:
 # icon info > https://semantic-ui.com/elements/icon.html
 
 
-def get_user_badges(uid: int, privs: int):
-    group_list = []
+def get_user_badges(uid: int, privs: int) -> list[list[str]]:
+    group_list: list[list[str]] = []
     user_priv = Privileges(int(privs))
     if uid in [3]:
         group_list.append(["crown", "Owner", "#DE9DFF"])
@@ -284,7 +285,7 @@ def get_user_badges(uid: int, privs: int):
     return group_list
 
 
-def get_difficulty_colour_spectrum(diff_value):
+def get_difficulty_colour_spectrum(diff_value: float) -> str:
     domain = [0.1, 1.25, 2, 2.5, 3.3, 4.2, 4.9, 5.8, 6.7, 7.7, 9]
     range_ = [
         "#4290FB",
@@ -333,31 +334,7 @@ def get_difficulty_colour_spectrum(diff_value):
         return f"#{red:02X}{green:02X}{blue:02X}"
 
 
-BANNERS_PATH = Path.cwd() / ".data/banners"
-BACKGROUND_PATH = Path.cwd() / ".data/backgrounds"
-
-
-def has_profile_customizations(user_id: int = 0) -> dict[str, bool]:
-    # check for custom banner image file
-    for ext in ("jpg", "jpeg", "png", "gif"):
-        path = BANNERS_PATH / f"{user_id}.{ext}"
-        if has_custom_banner := path.exists():
-            break
-    else:
-        has_custom_banner = False
-
-    # check for custom background image file
-    for ext in ("jpg", "jpeg", "png", "gif"):
-        path = BACKGROUND_PATH / f"{user_id}.{ext}"
-        if has_custom_background := path.exists():
-            break
-    else:
-        has_custom_background = False
-
-    return {"banner": has_custom_banner, "background": has_custom_background}
-
-
-def get_mode_icon(id: int):
+def get_mode_icon(id: int) -> str:
     if id in [0, 4, 8]:
         mode = "mode-icon mode-osu"
     elif id in [1, 5]:
@@ -366,11 +343,13 @@ def get_mode_icon(id: int):
         mode = "mode-icon mode-catch"
     elif id in [3]:
         mode = "mode-icon mode-mania"
+    else:
+        mode = ""
 
     return mode
 
 
-def get_color_formatted_grade(a):
+def get_color_formatted_grade(a: str) -> dict[str, str]:
     color = "#fff"
     if a in ["A"]:
         color = "#28a745"
@@ -429,8 +408,8 @@ mod_dict = {
 }
 
 
-def get_mods(mods_int):
-    mods = []
+def get_mods(mods_int: int) -> str:
+    mods: list[str] = []
 
     for mod_value, mod_str in mod_dict.items():
         if mods_int & mod_value:

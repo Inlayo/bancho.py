@@ -10,6 +10,7 @@ import string
 import time
 from functools import wraps
 from pathlib import Path
+from typing import Any
 
 import bcrypt
 import timeago
@@ -28,6 +29,7 @@ from objects.utils import flash_with_customizations
 from objects.utils import flashrect
 from objects.utils import rebuildSession
 from objects.utils import render_template_flashrect as render_template
+from PIL import Image
 
 # from quart import render_template
 from quart import Blueprint
@@ -58,7 +60,7 @@ def login_required(func):
 
 
 @frontend.before_request
-async def check_session():
+async def check_session() -> str | None:
     required_keys = [
         "authenticated",
         "user_data",
@@ -71,16 +73,17 @@ async def check_session():
             "There is an issue with your session information. Please login again.",
             "/login",
         )
+    return None
 
 
 @frontend.route("/home")
 @frontend.route("/")
-async def home():
+async def home() -> str:
     return await render_template("home.html")
 
 
 @frontend.route("/forgot_emailchecksend", methods=["POST"])
-async def forgot_emaliCheckSend_post():
+async def forgot_emaliCheckSend_post() -> str:
     form = await request.form
     email = form.get("email", type=str)
     username = await glob.db.fetch("SELECT name FROM users WHERE email = %s", [email])
@@ -111,12 +114,12 @@ async def forgot_emaliCheckSend_post():
 
 
 @frontend.route("/forgot")
-async def forgot():
+async def forgot() -> str:
     return await render_template("forgot.html", SenderEmail=glob.config.SenderEmail)
 
 
 @frontend.route("/forgot", methods=["POST"])
-async def forget_resetpassword():
+async def forget_resetpassword() -> str:
     form = await request.form
     email = form.get("email", type=str).lower()
     emailkey = form.get("emailkey")
@@ -206,18 +209,18 @@ async def forget_resetpassword():
 
 
 @frontend.route("/rules")
-async def rules():
+async def rules() -> str:
     return await render_template("rules.html")
 
 
 @frontend.route("/home/account/edit")
-async def home_account_edit():
+async def home_account_edit() -> Any:
     return redirect("/settings/profile")
 
 
 @frontend.route("/settings/profile_emailchecksend", methods=["POST"])
 @login_required
-async def settings_profile_emaliCheckSend_post():
+async def settings_profile_emaliCheckSend_post() -> list[Any]:
     omstatus = nmstatus = None
     form = await request.form
     new_name = form.get("username", type=str)
@@ -297,13 +300,13 @@ async def settings_profile_emaliCheckSend_post():
 @frontend.route("/settings")
 @frontend.route("/settings/profile")
 @login_required
-async def settings_profile():
+async def settings_profile() -> str:
     return await render_template("settings/profile.html")
 
 
 @frontend.route("/settings/profile", methods=["POST"])
 @login_required
-async def settings_profile_post():
+async def settings_profile_post() -> str:
     form = await request.form
 
     new_name = form.get("username", type=str)
@@ -454,7 +457,7 @@ async def settings_profile_post():
 
 
 @frontend.route("/topplays")
-async def topplays():
+async def topplays() -> tuple[str, int] | str:
     mods = request.args.get("mods", "vn", type=str)  # 1. key 2. default value
     mode = request.args.get("mode", "std", type=str)
 
@@ -503,13 +506,13 @@ async def topplays():
 
 @frontend.route("/settings/avatar")
 @login_required
-async def settings_avatar():
+async def settings_avatar() -> str:
     return await render_template("settings/avatar.html")
 
 
 @frontend.route("/settings/avatar", methods=["POST"])
 @login_required
-async def settings_avatar_post():
+async def settings_avatar_post() -> str:
     # constants
     MAX_IMAGE_SIZE = glob.config.max_image_size * 1024 * 1024
     AVATARS_PATH = f"{glob.config.path_to_gulag}.data/avatars"
@@ -582,7 +585,7 @@ async def settings_avatar_post():
 
 @frontend.route("/settings/custom")
 @login_required
-async def settings_custom():
+async def settings_custom() -> str:
     profile_customizations = utils.has_profile_customizations(
         session["user_data"]["id"],
     )
@@ -594,7 +597,7 @@ async def settings_custom():
 
 @frontend.route("/settings/custom", methods=["POST"])
 @login_required
-async def settings_custom_post():
+async def settings_custom_post() -> str:
     files = await request.files
     banner = files.get("banner")
     background = files.get("background")
@@ -675,13 +678,13 @@ async def settings_custom_post():
 
 @frontend.route("/settings/password")
 @login_required
-async def settings_password():
+async def settings_password() -> str:
     return await render_template("settings/password.html")
 
 
 @frontend.route("/settings/password", methods=["POST"])
 @login_required
-async def settings_password_post():
+async def settings_password_post() -> str:
     form = await request.form
     old_password = form.get("old_password")
     new_password = form.get("new_password")
@@ -792,7 +795,7 @@ async def settings_password_post():
 
 @frontend.route("/users/<id>")
 @frontend.route("/u/<id>")
-async def profile_select(id):
+async def profile_select(id: str) -> str | tuple[str, int]:
     # Accept both legacy (mode/mods as strings) and new query (mode/rx as ints)
     raw_mode = request.args.get("mode", "std", type=str)
     raw_rx = request.args.get("rx", None, type=str)
@@ -860,7 +863,7 @@ async def profile_select(id):
 
 @frontend.route("/leaderboard")
 @frontend.route("/lb")
-async def leaderboard():
+async def leaderboard() -> str | tuple[str, int]:
     mode = request.args.get("mode", "std", type=str)  # 1. key 2. default value
     mods = request.args.get("mods", "vn", type=str)
     sort = request.args.get("sort", "pp", type=str)
@@ -888,7 +891,7 @@ async def leaderboard():
 
 
 @frontend.route("/login")
-async def login():
+async def login() -> str:
     if "authenticated" in session:
         return await flash("error", "You're already logged in!", "home")
 

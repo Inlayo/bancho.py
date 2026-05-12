@@ -5,6 +5,7 @@ from __future__ import annotations
 __all__ = ()
 
 import os
+from typing import Any
 
 import aiohttp
 import orjson
@@ -36,7 +37,7 @@ def make_session_permanent():
 @app.before_serving
 async def mysql_conn() -> None:
     glob.db = AsyncSQLPool()
-    await glob.db.connect(glob.config.mysql)  # type: ignore
+    await glob.db.connect(glob.config.mysql)
     log("Connected to MySQL!", Ansi.LGREEN)
 
 
@@ -62,22 +63,22 @@ async def shutdown() -> None:
 # globals which can be used in template code
 @app.template_global()
 def appVersion() -> str:
-    return repr(version)
+    return str(version)
 
 
 @app.template_global()
 def appName() -> str:
-    return glob.config.app_name
+    return str(glob.config.app_name)
 
 
 @app.template_global()
 def captchaKey() -> str:
-    return glob.config.hCaptcha_sitekey
+    return str(glob.config.hCaptcha_sitekey)
 
 
 @app.template_global()
 def domain() -> str:
-    return glob.config.domain
+    return str(glob.config.domain)
 
 
 from blueprints.frontend import frontend
@@ -90,7 +91,7 @@ app.register_blueprint(admin, url_prefix="/admin")
 
 
 @app.errorhandler(404)
-async def page_not_found(e):
+async def page_not_found(e: Exception) -> tuple[Any, int]:
     # NOTE: we set the 404 status explicitly
     return (await render_template("404.html"), 404)
 

@@ -16,14 +16,14 @@ sender_email = glob.config.SenderEmail
 sender_password = glob.config.SenderEmailPassword
 
 
-def exceptionE(msg=""):
+def exceptionE(msg: str = "") -> str:
     e = traceback.format_exc()
     log.error(f"{msg} \n{e}")
     return e
 
 
-def mailSend(nick: str, to_email: str, subject: str, body: str, type=" "):
-    sc = 200
+def mailSend(nick: str, to_email: str, subject: str, body: str, type: str = " ") -> int | str:
+    sc: int | str = 200
     msg = MIMEMultipart()
     msg["From"] = f"Inlayo <{sender_email}>"
     if nick and not nick.isascii():
@@ -41,30 +41,31 @@ def mailSend(nick: str, to_email: str, subject: str, body: str, type=" "):
     except Exception as e:
         # SMTPDataError(code, resp), smtplib.SMTPDataError
         exceptionE(f"{type} email send failed : {e}")
-        sc = e
+        sc = str(e)
 
     # Copy to sent mail folder
     try:
         if sc == 200:
             imap = imaplib.IMAP4_SSL(**glob.config.IMAP_serverInfo)
             imap.login(sender_email, sender_password)
-            imap.append("Sent", None, None, msg.as_bytes())
+            msg_bytes = msg.as_bytes()
+            imap.append("Sent", None, None, msg_bytes)
             log.info("Sent mail folder copied successfully!")
         else:
             log.warning("Sent mail folder copy skipped due to email send failure")
     except Exception as e:
         exceptionE(f"Sent mail folder copy failed : {e}")
-        sc = e
+        sc = str(e)
 
     # Send Discord webhook
     try:
         if sc != 200:
-            raise sc
-        msg = msg.as_string()
-        if len(msg) > 4096:
-            msg = msg[:4096]  # limit description length
+            raise ValueError(str(sc))
+        msg_str = msg.as_string()
+        if len(msg_str) > 4096:
+            msg_str = msg_str[:4096]  # limit description length
         webhook = DiscordWebhook(url=glob.config.DISCORD_EMAIL_LOG_WEBHOOK)
-        embed = DiscordEmbed(description=msg, color=242424)
+        embed = DiscordEmbed(description=msg_str, color=242424)
         embed.set_author(
             name=f"InlayoBot Sent {type}email",
             url=f"https://osu.{glob.config.domain}/u/1",

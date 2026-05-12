@@ -3,6 +3,7 @@ from __future__ import annotations
 __all__ = ()
 
 import datetime
+from typing import Any
 
 import timeago
 from objects import glob
@@ -17,7 +18,7 @@ admin = Blueprint("admin", __name__)
 @admin.route("/")
 @admin.route("/home")
 @admin.route("/dashboard")
-async def home():
+async def home() -> str:
     """Render the homepage of guweb's admin panel."""
     if not "authenticated" in session:
         return await flash("error", "Please login first.", "login")

@@ -19,7 +19,7 @@ from time import strftime
 from objects import glob
 
 
-def getTimestamp():
+def getTimestamp() -> str:
     """
     Return current time in YYYY-MM-DD HH:MM:SS format.
     Used in logs.
@@ -30,14 +30,14 @@ def getTimestamp():
 
 
 def logMessage(
-    message,
-    alertType="INFO",
-    messageColor=ENDC,
-    discord=None,
-    alertDev=False,
-    of=None,
-    stdout=True,
-):
+    message: str,
+    alertType: str = "INFO",
+    messageColor: str = ENDC,
+    discord: str | None = None,
+    alertDev: bool = False,
+    of: str | None = None,
+    stdout: bool = True,
+) -> None:
     """
     Log a message
 
@@ -90,7 +90,7 @@ def logMessage(
         print(finalMessageConsole)
 
 
-def warning(message, discord=None, alertDev=False):
+def warning(message: str, discord: str | None = None, alertDev: bool = False) -> None:
     """
     Log a warning to stdout and optionally to Discord
 
@@ -104,7 +104,7 @@ def warning(message, discord=None, alertDev=False):
     logMessage(message, "WARNING", YELLOW, discord, alertDev)
 
 
-def error(message, discord=None, alertDev=True):
+def error(message: str, discord: str | None = None, alertDev: bool = True) -> None:
     """
     Log a warning message to stdout and optionally to Discord
 
@@ -118,7 +118,7 @@ def error(message, discord=None, alertDev=True):
     logMessage(message, "ERROR", RED, discord, alertDev)
 
 
-def info(message, discord=None, alertDev=False):
+def info(message: str, discord: str | None = None, alertDev: bool = False) -> None:
     """
     Log an info message to stdout and optionally to Discord
 
@@ -132,7 +132,7 @@ def info(message, discord=None, alertDev=False):
     logMessage(message, "INFO", ENDC, discord, alertDev)
 
 
-def debug(message, debug2=False):
+def debug(message: str, debug2: bool = False) -> None:
     """
     Log a debug message to stdout.
     Works only if the server is running in debug mode.
@@ -148,11 +148,11 @@ def debug(message, debug2=False):
         logMessage(message, "DEBUG" if not debug2 else "DEBUG2", PINK)
 
 
-def debug2(message):
+def debug2(message: str) -> None:
     return debug(message, debug2=True)
 
 
-def chat(message):
+def chat(message: str) -> None:
     """
     Log a public chat message to stdout and to chatlog_public.txt.
 
