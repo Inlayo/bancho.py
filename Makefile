@@ -1,5 +1,7 @@
 #!/usr/bin/env make
 
+.PHONY: build run run-bg run-cfd run-cfd-bg run-caddy logs shell test lint type-check install install-dev uninstall bump guweb
+
 build:
 	if [ -d ".db-data" ]; then sudo chmod -R 755 .db-data; fi
 	docker build -t bancho:latest .
@@ -53,4 +55,4 @@ bump:
 	poetry version $(version)
 
 guweb:
-	cd guweb && pm2 start main.py --name guweb
+	cd guweb && pm2 start "python3 main.py" --name guweb --interpreter python3
