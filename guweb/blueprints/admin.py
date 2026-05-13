@@ -43,12 +43,14 @@ async def home() -> Any:
         "ORDER BY scores.id DESC LIMIT 100",
     )
 
-    return cast(Any, await render_template(
-        "admin/home.html",
-        dashdata=dash_data,
-        recentusers=recent_users,
-        recentscores=recent_scores,
-        datetime=datetime,
-        timeago=timeago,
-    ))
+    return cast(
+        Any,
+        await render_template(
+            "admin/home.html",
+            dashdata=dash_data,
+            recentusers=recent_users,
+            recentscores=recent_scores,
+            datetime=datetime,
+            timeago=timeago,
+        ),
     )

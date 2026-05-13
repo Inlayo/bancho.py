@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from redis.asyncio import Redis
 
 db: AsyncSQLPool
-redis: Redis[bytes]
+redis: Redis
 http: ClientSession
 version: Version
 

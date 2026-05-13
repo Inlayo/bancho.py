@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import imaplib
 import smtplib
+import time
 import traceback
 from email.header import Header
 from email.mime.multipart import MIMEMultipart
@@ -55,7 +56,7 @@ def mailSend(
             imap = imaplib.IMAP4_SSL(**glob.config.IMAP_serverInfo)
             imap.login(sender_email, sender_password)
             msg_bytes = msg.as_bytes()
-            imap.append("Sent", "", None, msg_bytes)
+            imap.append("Sent", "", imaplib.Time2Internaldate(time.time()), msg_bytes)
             log.info("Sent mail folder copied successfully!")
         else:
             log.warning("Sent mail folder copy skipped due to email send failure")

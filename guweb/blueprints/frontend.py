@@ -8,12 +8,12 @@ import os
 import random
 import string
 import time
+from collections.abc import Callable
 from functools import wraps
 from pathlib import Path
 from typing import Any
-from typing import Callable
-from typing import cast
 from typing import TypeVar
+from typing import cast
 
 import bcrypt
 import timeago
@@ -120,17 +120,19 @@ async def forgot_emaliCheckSend_post() -> Any:
 
 @frontend.route("/forgot")
 async def forgot() -> Any:
-    return cast(Any, await render_template("forgot.html", SenderEmail=glob.config.SenderEmail))
+    return cast(
+        Any,
+        await render_template("forgot.html", SenderEmail=glob.config.SenderEmail),
+    )
 
 
 @frontend.route("/forgot", methods=["POST"])
 async def forget_resetpassword() -> Any:
     form = await request.form
-    email = form.get("email", type=str).lower()
+    email = form.get("email", type=str)
     emailkey = form.get("emailkey")
     new_password = form.get("new_password")
     repeat_password = form.get("repeat_password")
-    uid = (await glob.db.fetch("SELECT id FROM users WHERE email = %s", [email]))["id"]
 
     if (
         email is None
@@ -139,6 +141,9 @@ async def forget_resetpassword() -> Any:
         or repeat_password is None
     ):
         return await flash("error", "Invalid parameters.", "forgot")
+
+    email = email.lower()
+    uid = (await glob.db.fetch("SELECT id FROM users WHERE email = %s", [email]))["id"]
 
     # new password and repeat password don't match; deny post
     if new_password != repeat_password:
@@ -502,12 +507,15 @@ async def topplays() -> Any:
         score["grade"] = utils.get_color_formatted_grade(score["grade"])
         score["pp"] = round(score["pp"], 1)
 
-    return cast(Any, await render_template(
-        "topplays.html",
-        scores=scores,
-        mode_str=mode_str,
-        mode=mode_int,
-    ))
+    return cast(
+        Any,
+        await render_template(
+            "topplays.html",
+            scores=scores,
+            mode_str=mode_str,
+            mode=mode_int,
+        ),
+    )
 
 
 @frontend.route("/settings/avatar")
@@ -595,10 +603,13 @@ async def settings_custom() -> Any:
     profile_customizations = utils.has_profile_customizations(
         session["user_data"]["id"],
     )
-    return cast(Any, await render_template(
-        "settings/custom.html",
-        customizations=profile_customizations,
-    ))
+    return cast(
+        Any,
+        await render_template(
+            "settings/custom.html",
+            customizations=profile_customizations,
+        ),
+    )
 
 
 @frontend.route("/settings/custom", methods=["POST"])
@@ -695,6 +706,10 @@ async def settings_password_post() -> Any:
     old_password = form.get("old_password")
     new_password = form.get("new_password")
     repeat_password = form.get("repeat_password")
+
+    # Validate that all fields are provided
+    if not (old_password and new_password and repeat_password):
+        return await flash("error", "Missing required fields.", "settings/password")
 
     # new password and repeat password don't match; deny post
     if new_password != repeat_password:
@@ -835,10 +850,10 @@ async def profile_select(id: str) -> str | tuple[str, int]:
     # if user_data["id"] == 1: return (await render_template('404.html'), 404)
 
     # make sure mode & mods are valid args
-    if mode is not None and mode not in VALID_MODES:
+    if mode not in VALID_MODES:
         return (await render_template("404.html"), 404)
 
-    if mods is not None and mods not in VALID_MODS:
+    if mods not in VALID_MODS:
         return (await render_template("404.html"), 404)
 
     # Enforce combinations: std: vn/rx/ap, taiko: vn/rx, catch: vn/rx, mania: vn only
@@ -887,13 +902,16 @@ async def leaderboard() -> Any:
     ):
         return (await render_template("404.html"), 404)
 
-    return cast(Any, await render_template(
-        "leaderboard.html",
-        mode=mode,
-        sort=sort,
-        mods=mods,
-        page=page,
-    ))
+    return cast(
+        Any,
+        await render_template(
+            "leaderboard.html",
+            mode=mode,
+            sort=sort,
+            mods=mods,
+            page=page,
+        ),
+    )
 
 
 @frontend.route("/login")
@@ -919,6 +937,7 @@ async def login_post() -> Any:
     if "authenticated" in session:
         return await flash("error", "You're already logged in!", "home")
 
+    login_time: int = 0
     if glob.config.debug:
         login_time = time.time_ns()
 
@@ -992,8 +1011,8 @@ async def login_post() -> Any:
     session["flash_data"] = {}
 
     if glob.config.debug:
-        login_time = (time.time_ns() - login_time) / 1e6
-        log(f"Login took {login_time:.2f}ms!", Ansi.LYELLOW)
+        elapsed_time = (time.time_ns() - login_time) / 1e6
+        log(f"Login took {elapsed_time:.2f}ms!", Ansi.LYELLOW)
 
     return await flash(
         "success",
