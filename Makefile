@@ -55,4 +55,4 @@ bump:
 	poetry version $(version)
 
 guweb:
-	cd guweb && pm2 start "python3 main.py" --name guweb --interpreter python3
+	cd guweb && pm2 start main.py --name guweb --interpreter python3
