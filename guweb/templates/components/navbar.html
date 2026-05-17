@@ -17,14 +17,14 @@
 
     <div id="navbar-menu" class="navbar-menu">
       <div class="navbar-start">
-        <a class="navbar-item" href="/home"> 
-          <i class="fas fa-home" style="margin-right: 6px;"></i> Home 
+        <a class="navbar-item" href="/home">
+          <i class="fas fa-home" style="margin-right: 6px;"></i> Home
         </a>
-        <a class="navbar-item" href="/leaderboard"> 
-          <i class="fas fa-ranking-star" style="margin-right: 6px;"></i> Leaderboards 
+        <a class="navbar-item" href="/leaderboard">
+          <i class="fas fa-ranking-star" style="margin-right: 6px;"></i> Leaderboards
         </a>
-        <a class="navbar-item" href="/topplays"> 
-          <i class="fas fa-trophy" style="margin-right: 6px;"></i> Top Plays 
+        <a class="navbar-item" href="/topplays">
+          <i class="fas fa-trophy" style="margin-right: 6px;"></i> Top Plays
         </a>
       </div>
     </div>
@@ -54,16 +54,16 @@
           <a class="navbar-item" href="/u/{{ session.user_data['id'] }}">
             <i class="fas fa-user" style="margin-right: 8px;"></i> Profile
           </a>
-          <a class="navbar-item" href="/settings"> 
+          <a class="navbar-item" href="/settings">
             <i class="fas fa-cog" style="margin-right: 8px;"></i> Settings
           </a>
           {% if session.authenticated and session.user_data['is_staff'] %}
-          <a class="navbar-item" href="/admin"> 
+          <a class="navbar-item" href="/admin">
             <i class="fas fa-shield" style="margin-right: 8px;"></i> Management
           </a>
           {% endif %}
           <hr class="navbar-divider" />
-          <a class="navbar-item" href="/logout"> 
+          <a class="navbar-item" href="/logout">
             <i class="fas fa-sign-out-alt" style="margin-right: 8px;"></i> Logout
           </a>
         </div>
