@@ -13,6 +13,7 @@ a:hover {
     margin-top: 0;
     width: auto;
     height: 190px;
+    background: var(--bg-secondary);
 }
 
 .main-banner {
@@ -23,11 +24,12 @@ a:hover {
     flex-direction: column;
     justify-content: space-between;
     position: relative;
-    padding: 5px 36px;
+    padding: 20px 36px;
     height: auto;
-    background-color: #2e3538;
+    background: linear-gradient(135deg, rgba(94, 124, 226, 0.08) 0%, rgba(94, 124, 226, 0.04) 100%);
     text-align: left;
-    border-radius: 16px 16px 0px 0px
+    border-radius: 16px 16px 0px 0px;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .main-banner>* {
@@ -35,8 +37,8 @@ a:hover {
 }
 
 .header-text {
-    color: #fff;
-    font-weight: 200;
+    color: var(--text-primary);
+    font-weight: 500;
 }
 
 .main-banner::before {
@@ -51,12 +53,16 @@ a:hover {
 }
 
 .colored-link {
-    color: #70a1ff;
+    color: var(--primary);
+    transition: color 0.3s ease;
 }
 
+.colored-link:hover {
+    color: var(--primary-light);
+}
 
 .score-banner-score {
-    height: 100%
+    height: 100%;
 }
 
 /* Score Banner */
@@ -69,7 +75,7 @@ a:hover {
     grid-template-areas:
         "score-banner-grade score-banner-score score-banner-score"
         "score-banner-grade score-banner-scoreinfo score-banner-link-buttons";
-    padding: 10px 0;
+    padding: 16px;
     min-height: 210px;
     background-size: cover;
     background-position: 50%;
@@ -77,10 +83,8 @@ a:hover {
     align-items: center;
     flex-direction: column;
     position: relative;
-    /* Background overlay color */
-    -webkit-box-shadow: inset 2000px 2000px 0px 0px rgba(17, 40, 56, 0.7);
-    -moz-box-shadow: inset 2000px 2000px 0px 0px rgba(23, 26, 28, 0.7);
-    box-shadow: inset 2000px 2000px 0px 0px rgba(23, 26, 28, 0.7);
+    background: var(--bg-secondary);
+    box-shadow: inset 0 0 32px rgba(94, 124, 226, 0.05);
 }
 
 .score-info:before {
@@ -90,7 +94,7 @@ a:hover {
     height: 100%;
     width: 100%;
     content: "";
-    background-color: #171a1c;
+    background: transparent;
 }
 
 .score-banner-grade {
@@ -99,15 +103,17 @@ a:hover {
     justify-content: center;
     align-items: center;
     font-size: 126px;
+    text-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .score-banner-score {
     grid-area: score-banner-score;
     font-size: 70px;
-    font-weight: 450;
+    font-weight: 600;
     margin-bottom: -50px;
     display: flex;
     align-items: baseline;
+    color: var(--text-primary);
 }
 
 .rank-grade-SH,
@@ -121,7 +127,7 @@ a:hover {
 
 .rank-grade-S,
 .rank-grade-X {
-    color: #fc2;
+    color: #fbbf24;
     grid-area: score-banner-grade;
     font-size: 130px;
     display: grid;
@@ -136,7 +142,7 @@ a:hover {
 }
 
 .rank-grade-B {
-    color: #3d97ff;
+    color: #60a5fa;
     grid-area: score-banner-grade;
     font-size: 130px;
     display: grid;
@@ -144,7 +150,7 @@ a:hover {
 }
 
 .rank-grade-C {
-    color: #ff56da;
+    color: #ec4899;
     grid-area: score-banner-grade;
     font-size: 130px;
     display: grid;

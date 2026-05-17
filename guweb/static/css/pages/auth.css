@@ -1,13 +1,16 @@
 .main-block {
-    color: #fff;
-    padding: 20px;
+    color: var(--text-primary);
+    padding: 40px;
+    background-color: var(--bg-secondary);
 }
 
 .collumdis {
     flex-direction: column;
-    padding: 21px 22px;
+    padding: 32px;
     position: relative;
-    border-radius: 8px;
+    border-radius: 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
 }
 
 .title-block {
@@ -30,37 +33,42 @@
     align-items: center;
     justify-content: center;
     background-size: cover;
-    margin: 5;
-    border-radius: 7px;
-    transition: 0.2s ease;
-    background: hsl(var(--main), 10%, 25%);
+    margin: 8px;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    cursor: pointer;
 }
 
 .selection-block:hover {
-    box-shadow: 1px 1px 13px -5px #000;
-    transform: translateY(-5px);
+    box-shadow: 0 8px 24px rgba(94, 124, 226, 0.2);
+    transform: translateY(-4px);
+    border-color: var(--primary);
 }
 
 .title:not(:last-child) {
-    margin-bottom: 1.5rem;
+    margin-bottom: 2rem;
 }
 
 .title {
     text-align: center;
+    color: var(--text-primary);
 }
 
 .subtitle {
-    color: #e6a5b5;
-    font-weight: 400;
-    line-height: 1.25;
+    color: var(--primary);
+    font-weight: 500;
+    line-height: 1.6;
 }
 
 a.single-menu {
-    color: inherit;
+    color: var(--text-primary);
+    transition: color 0.3s ease;
 }
 
 a.single-menu:hover {
-    color: inherit;
+    color: var(--primary);
 }
 
 input:focus {
@@ -73,25 +81,41 @@ button:focus {
 
 .is-auth {
     width: 485px;
-    border-radius: 36px;
+    border-radius: 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
 
 .dialog {
     font-size: 14px;
     margin-bottom: 10px;
+    color: var(--text-secondary);
 }
 
 .box {
     padding: 1.5rem 1.75rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
 }
 
 input.input {
     height: 46px;
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+}
+
+input.input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 12px rgba(94, 124, 226, 0.2);
 }
 
 .control.has-icons-left .icon,
 .control.has-icons-right .icon {
     height: 46px;
+    color: var(--text-secondary);
 }
 
 /* Change autocomplete styles in WebKit */
@@ -104,15 +128,16 @@ textarea:-webkit-autofill:focus,
 select:-webkit-autofill,
 select:-webkit-autofill:hover,
 select:-webkit-autofill:focus {
-    border: 1px solid rgba(0, 128, 0, 0);
-    -webkit-text-fill-color: rgb(255, 255, 255);
-    -webkit-box-shadow: 0 0 0px 1000px rgba(0, 0, 0, 0) inset;
+    border: 1px solid var(--primary) !important;
+    -webkit-text-fill-color: var(--text-primary) !important;
+    -webkit-box-shadow: 0 0 0px 1000px var(--bg-tertiary) inset !important;
     transition: background-color 5000s ease-in-out 0s;
 }
 
 @media only screen and (max-width: 770px) {
     .is-auth {
-        width: 500px;
+        width: 100%;
+        max-width: 500px;
     }
 
     .icon-block {
@@ -125,7 +150,7 @@ select:-webkit-autofill:focus {
 
 @media only screen and (max-width: 500px) {
     .is-auth {
-        width: initial;
+        width: 100%;
     }
 
     .icon-block {
@@ -142,19 +167,22 @@ select:-webkit-autofill:focus {
 
 .button.is-send {
     position: absolute;
-    right: 3px;
+    right: 8px;
     top: 50%;
     transform: translateY(-50%);
-    background-color: rgb(96, 96, 96);
+    background-color: var(--primary);
     border: none;
-    color: #fff;
-    padding: 12px 12px;
-    border-radius: 7px;
-    font-size: 16px;
+    color: white;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
     font-weight: 600;
+    transition: all 0.3s ease;
+    cursor: pointer;
 }
 
 .button.is-send:hover {
-    background-color: rgb(128, 128, 128);
-    box-shadow: 0px 3px 8px rgba(0, 0, 0, 0.2);
+    background-color: var(--primary-light);
+    box-shadow: 0px 4px 12px rgba(94, 124, 226, 0.3);
+    transform: translateY(calc(-50% - 2px));
 }
