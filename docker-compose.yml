@@ -23,8 +23,8 @@ services:
 
   redis:
     image: redis:8.2.2
-    # ports:
-    #   - ${REDIS_PORT}:${REDIS_PORT}
+    ports:
+      - ${REDIS_PORT}:${REDIS_PORT}
     environment:
       - REDIS_PASS=${REDIS_PASS}
     user: root
