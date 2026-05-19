@@ -1,17 +1,15 @@
 .main-block {
     height: auto;
-    color: var(--text-primary);
-    background: var(--bg-secondary);
+    color: #fff;
 }
 
 .title-block {
     height: auto;
     width: auto;
-    padding: 40px 32px 16px 32px;
-    background: linear-gradient(135deg, rgba(94, 124, 226, 0.08) 0%, transparent 100%);
+    padding: 38px 22px 10px 22px;
+    background-color: hsl(var(--main), 30%, 50%);
     border-top-left-radius: 16px;
     border-top-right-radius: 16px;
-    border-bottom: 1px solid var(--border-color);
 }
 
 h1,
@@ -20,74 +18,59 @@ h3,
 h4,
 h5,
 h6 {
-    font-weight: 600;
-    color: var(--text-primary);
+    font-weight: 500;
 }
 
 h1 {
-    font-size: 2em;
-    margin-bottom: 16px;
+    font-size: 1.9em;
 }
 
 h2,
 .doc-title {
-    font-size: 1.6em;
-    margin-top: 24px;
-    margin-bottom: 12px;
-    color: var(--primary);
+    font-size: 1.7em;
 }
 
 .doc-block {
-    padding: 32px;
-    color: var(--text-secondary);
+    padding: 22px;
 }
 
 h3,
 .doc-subtitle {
-    font-size: 1.3em;
-    margin-top: 20px;
-    margin-bottom: 10px;
+    font-size: 1.5em;
 }
 
 h3.title {
-    font-size: 1.3rem;
-    font-weight: 600;
+    font-size: 1.5rem;
+    font-weight: normal;
 }
 
 h4 {
-    font-size: 1.1em;
-    margin-top: 16px;
-    margin-bottom: 8px;
+    font-size: 1.3em;
 }
 
 h5 {
-    font-size: 1em;
-    font-weight: 600;
+    font-size: 1.1em;
 }
 
 h6 {
-    font-size: 0.95em;
-    opacity: 0.8;
+    font-size: 0.9em;
 }
 
 ol,
 ul {
-    padding: 0px 0px 12px 24px;
-    color: var(--text-secondary);
+    padding: 0px 0px 10px 20px;
 }
 
 ol li {
     counter-increment: section !important;
-    list-style-type: decimal;
-    margin-bottom: 6px;
-    line-height: 1.6;
+    list-style-type: none;
+}
+
+ol li:before {
+    font-weight: 700;
+    content: counters(section, ".") ". ";
 }
 
 ul {
     list-style: disc !important;
-}
-
-ul li {
-    margin-bottom: 6px;
-    line-height: 1.6;
 }

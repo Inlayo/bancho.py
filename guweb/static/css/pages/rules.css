@@ -1,24 +1,20 @@
 .main-block {
-    color: var(--text-primary);
-    padding: 40px;
-    background-color: var(--bg-secondary);
+    color: #fff;
+    padding: 20px;
 }
 
 .collumdis {
     flex-direction: column;
-    padding: 32px;
+    padding: 21px 22px;
     position: relative;
-    border-radius: 12px;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
+    border-radius: 8px;
 }
 
 .title-block {
-    height: auto;
+    height: 125px;
     display: flex;
     align-items: center;
     place-content: center;
-    padding: 20px;
 }
 
 .icon-block {
@@ -34,51 +30,45 @@
     align-items: center;
     justify-content: center;
     background-size: cover;
-    margin: 12px;
-    border-radius: 12px;
-    transition: all 0.3s ease;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    cursor: pointer;
+    margin: 5;
+    border-radius: 7px;
+    transition: 0.2s ease;
+    background: hsl(var(--main), 10%, 25%);
 }
 
 .selection-block:hover {
-    box-shadow: 0 8px 24px rgba(94, 124, 226, 0.2);
-    transform: translateY(-4px);
-    border-color: var(--primary);
+    box-shadow: 1px 1px 13px -5px #000;
+    transform: translateY(-5px);
 }
 
 .title:not(:last-child) {
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
 }
 
 .title {
     text-align: center;
-    color: var(--text-primary);
-    font-weight: 600;
 }
 
 .subtitle {
-    color: var(--primary);
-    font-weight: 500;
-    line-height: 1.6;
+    color: #e6a5b5;
+    font-weight: 400;
+    line-height: 1.25;
 }
 
 .column {
-    transition: all 0.3s ease;
+    transition: 0.2s ease;
 }
 
 #discord {
-    transition: all 0.3s ease;
+    transition: 0.2s ease;
 }
 
 a.single-menu {
-    color: var(--text-primary);
-    transition: color 0.3s ease;
+    color: inherit;
 }
 
 a.single-menu:hover {
-    color: var(--primary);
+    color: inherit;
 }
 
 input:focus {
@@ -91,9 +81,6 @@ button:focus {
 
 .is-auth {
     width: 900px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
 }
 
 .is-left {

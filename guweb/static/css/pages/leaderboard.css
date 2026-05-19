@@ -15,20 +15,20 @@ a:hover {
 }
 
 .leaderboard-banner {
-  background: linear-gradient(135deg, rgba(94, 124, 226, 0.1) 0%, rgba(94, 124, 226, 0.05) 100%);
-  background-size: cover;
+  background: url("https://wallpaperaccess.com/full/527686.jpg");
+  background-size: stretch;
   height: 194px;
   border-radius: 0;
-  border-top-right-radius: 12px;
-  border-top-left-radius: 12px;
-  border-bottom: 1px solid var(--border-color);
+  border-top-right-radius: 8px;
+  border-top-left-radius: 8px;
 }
 
 .leaderboard-column {
+  background-color: #eee;
+  color: #222;
   height: 38px;
   font-size: 12px;
-  background-color: var(--bg-tertiary);
-  transition: all 0.3s ease;
+  background-color: rgb(48, 48, 48);
 }
 
 .player-avatar {
@@ -38,94 +38,76 @@ a:hover {
   width: 30px;
   height: 27px;
   margin-bottom: -10px;
-  transition: all 0.3s ease;
-  border-radius: 6px;
-  border: 1px solid var(--border-color);
-}
-
-.player-avatar:hover {
-  transform: scale(1.1);
-  box-shadow: 0 4px 12px rgba(94, 124, 226, 0.2);
+  transition: 0.2s filter ease-out, 0.2s box-shadow ease-out;
+  border-radius: 5px;
 }
 
 .leaderboard-column:first-child .column-player-rank {
-  color: #fbbf24 !important;
+  color: rgb(247, 200, 45) !important;
 }
 
 .leaderboard-column:nth-child(2) .column-player-rank {
-  color: #d1d5db !important;
+  color: rgb(192, 192, 192) !important;
 }
 
 .leaderboard-column:nth-child(3) .column-player-rank {
-  color: #d97706 !important;
+  color: rgb(192, 136, 99) !important;
 }
 
 .leaderboard-main-bg {
-  border-bottom-right-radius: 12px;
-  border-bottom-left-radius: 12px;
-  padding: 24px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-top: none;
+  border-bottom-right-radius: 8px;
+  border-bottom-left-radius: 8px;
+  padding: 24px 24px;
 }
 
 .leaderboard-table {
   width: 100%;
   white-space: nowrap;
   text-align: center;
-  border-spacing: 0 4px;
+  border-spacing: 0 3px;
   border-collapse: separate;
   padding-bottom: 24px;
   transition: 0.2s ease;
 }
 
 tr td {
-  padding: 8px 4px;
+  padding: 6px 0;
 }
 
 .column-player-rank {
-  padding: 0 12px;
+  padding: 0 10px;
   text-align: center;
-  background-color: var(--bg-tertiary);
+  background-color: rgb(38, 38, 38);
   min-width: 44px;
   font-weight: 600;
   font-size: 13px;
-  color: var(--text-primary);
-  border-radius: 6px 0 0 6px;
+  color: #fff;
 }
 
 .column-player-rank-no-color {
-  color: var(--text-primary) !important;
+  color: #fff !important;
 }
 
 .column-player-name {
-  padding-left: 12px;
+  padding-left: 10px;
   padding-top: 6px;
   padding-bottom: 10px;
-  font-weight: 500;
+  font-weight: 600;
   text-align: left;
   font-size: 13px;
-  background-color: var(--bg-tertiary);
 }
 
 .column-player-name a {
-  color: var(--text-primary) !important;
-  transition: color 0.3s ease;
-}
-
-.column-player-name a:hover {
-  color: var(--primary) !important;
+  color: #fff !important;
 }
 
 .t-heading {
-  font-weight: 500;
-  color: var(--text-secondary);
-  opacity: 1;
-  padding: 8px 12px;
+  font-weight: 400;
+  color: #fff;
+  opacity: 0.7;
+  padding: 5px 12px;
   text-align: center !important;
   font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
 .t-heading--main {
@@ -140,20 +122,14 @@ tr td {
 .t-column:last-child {
   border-top-right-radius: 6px;
   border-bottom-right-radius: 6px;
-  background-color: var(--bg-tertiary);
 }
 
 tr.leaderboard-column td {
-  font-weight: 500;
-  border-bottom: transparent;
-  transition: all 0.2s ease;
-  color: var(--text-primary) !important;
+  font-weight: 600;
+  border-bottom: rgb(48, 48, 48);
+  transition: 0.1s background-color;
+  color: #fff !important;
   text-align: center;
-  background-color: var(--bg-tertiary);
-}
-
-tr.leaderboard-column td:last-child {
-  border-radius: 0 6px 6px 0;
 }
 
 table td,
@@ -161,9 +137,8 @@ table th {
   vertical-align: baseline;
 }
 
-.leaderboard-column:hover td {
-  background-color: var(--bg-secondary);
-  box-shadow: inset 0 0 12px rgba(94, 124, 226, 0.1);
+.leaderboard-column:hover td:not(:first-child) {
+  background-color: rgb(64, 64, 64);
 }
 
 .main-banner {

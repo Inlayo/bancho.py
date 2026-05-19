@@ -5,9 +5,6 @@
 <nav id="navbar" class="navbar is-primary">
   <div class="container">
     <div class="navbar-brand">
-      <a class="navbar-item navbar-logo" href="/home" style="font-weight: 700; letter-spacing: -0.5px;">
-        <div class="navbar-logo-img" style="width: 100px; height: 28px;"></div>
-      </a>
       <a role="button" class="navbar-burger" id="navbar-burger" onclick="togglenavbar()">
         <span aria-hidden="true"></span>
         <span aria-hidden="true"></span>
@@ -15,25 +12,32 @@
       </a>
     </div>
 
-    <div id="navbar-menu" class="navbar-menu">
+    <div id="navbar" class="navbar-menu">
       <div class="navbar-start">
-        <a class="navbar-item" href="/home">
-          <i class="fas fa-home" style="margin-right: 6px;"></i> Home
-        </a>
-        <a class="navbar-item" href="/leaderboard">
-          <i class="fas fa-ranking-star" style="margin-right: 6px;"></i> Leaderboards
-        </a>
-        <a class="navbar-item" href="/topplays">
-          <i class="fas fa-trophy" style="margin-right: 6px;"></i> Top Plays
-        </a>
+        <a class="navbar-item" href="/home"> Home </a>
+        <a class="navbar-item" href="/leaderboard"> Leaderboards </a>
+        <a class="navbar-item" href="/topplays"> Top Plays </a>
+        <!-- <a class="navbar-item" href="/rules"> Rules </a> -->
+        <!-- <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link"> Socials </a>
+          <div class="navbar-dropdown">
+
+            <a class="navbar-item" href="/twitch" target="_blank">&nbsp;Twitch&nbsp;</a>
+            <a class="navbar-item" href="/twitter" target="_blank">&nbsp;Twitter&nbsp;</a>
+            <a class="navbar-item" href="/github" target="_blank">&nbsp;GitHub&nbsp;</a>
+            <a class="navbar-item" href="/discord" target="_blank">&nbsp;Discord&nbsp;</a>
+            <a class="navbar-item" href="/youtube" target="_blank">&nbsp;YouTube&nbsp;</a>
+            <a class="navbar-item" href="/osuserver" target="_blank">&nbsp;osu! Server List&nbsp;</a>
+          </div> -->
+        </div>
       </div>
     </div>
 
     <div class="navbar-end">
       <div class="navbar-item">
         <div class="search-bar">
-          <input id="search-txt" type="text" placeholder="Search players..." />
-          <button onclick="search()" title="Search">
+          <input id="search-txt" type="text" placeholder="Search" />
+          <button onclick="search()">
             <i class="fa-solid fa-magnifying-glass"></i>
           </button>
           <script src="/static/js/search.js"></script>
@@ -41,42 +45,32 @@
         <div id="search-results" class="search-results"></div>
       </div>
       {% if session.authenticated %}
-      <div class="navbar-item has-dropdown is-hoverable">
+      <div class="navbar-item has-dropdown is-hoverable" style="zoom: 1.1">
         <a class="navbar-link">
           <div class="navbar-avatar"
             style="background: url(https://a.{{ domain() }}/{{ session.user_data['id'] }}); background-size: cover; background-position: 50%;">
           </div>
-          <span style="margin-left: 8px; max-width: 120px; overflow: hidden; text-overflow: ellipsis;">
-            {{ session.user_data['name'] }}
-          </span>
+          {{ session.user_data['name'] }}
         </a>
         <div class="navbar-dropdown">
           <a class="navbar-item" href="/u/{{ session.user_data['id'] }}">
-            <i class="fas fa-user" style="margin-right: 8px;"></i> Profile
+            &nbsp;Profile&nbsp;
           </a>
-          <a class="navbar-item" href="/settings">
-            <i class="fas fa-cog" style="margin-right: 8px;"></i> Settings
-          </a>
+          <a class="navbar-item" href="/settings"> &nbsp;Settings&nbsp;</a>
           {% if session.authenticated and session.user_data['is_staff'] %}
-          <a class="navbar-item" href="/admin">
-            <i class="fas fa-shield" style="margin-right: 8px;"></i> Management
-          </a>
+          <a class="navbar-item" href="/admin"> &nbsp;Management&nbsp;</a>
           {% endif %}
           <hr class="navbar-divider" />
-          <a class="navbar-item" href="/logout">
-            <i class="fas fa-sign-out-alt" style="margin-right: 8px;"></i> Logout
-          </a>
+          <a class="navbar-item" href="/logout"> &nbsp;Logout&nbsp;</a>
         </div>
       </div>
       {% else %}
-      <div class="navbar-item">
+      <div class="navbar-item" style="zoom: 1.1">
         <div class="buttons">
           <a class="button is-primary" href="/register">
             <strong>Sign up</strong>
           </a>
-          <a class="button is-info" href="/login">
-            Log in
-          </a>
+          <a class="button is-light" href="/login"> Log in </a>
         </div>
       </div>
       {% endif %}

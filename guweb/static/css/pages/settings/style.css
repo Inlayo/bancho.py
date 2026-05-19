@@ -1,29 +1,23 @@
 .main-block {
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
+  background-color: transparent;
+  color: #fff;
   width: 1155px;
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  overflow: hidden;
 }
 
 .collumdis {
   flex-direction: column;
-  padding: 32px;
+  padding: 21px 22px;
   position: relative;
-  border-radius: 12px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
+  border-radius: 8px;
 }
 
 .title-block {
   height: auto;
   width: auto;
-  padding: 40px 32px 16px 32px;
-  background: linear-gradient(135deg, rgba(94, 124, 226, 0.08) 0%, transparent 100%);
+  padding: 60px 22px 20px 22px;
+  background-color: hsl(var(--main), 30%, 50%);
   border-top-left-radius: 16px;
   border-top-right-radius: 16px;
-  border-bottom: 1px solid var(--border-color);
 }
 
 h1,
@@ -32,57 +26,57 @@ h3,
 h4,
 h5,
 h6 {
-  font-weight: 600;
-  color: var(--text-primary);
+  font-weight: 500;
 }
 
 h1 {
-  font-size: 2em;
+  font-size: 1.9em;
 }
 
 h2,
 .doc-title {
-  font-size: 1.6em;
-  color: var(--primary);
+  font-size: 1.7em;
 }
 
 .doc-block {
-  padding: 32px;
-  color: var(--text-secondary);
+  padding: 22px;
 }
 
 h3,
 .doc-subtitle {
-  font-size: 1.3em;
+  font-size: 1.5em;
 }
 
 h3.title {
-  font-size: 1.3rem;
-  font-weight: 600;
+  font-size: 1.5rem;
+  font-weight: normal;
 }
 
 h4 {
-  font-size: 1.1em;
+  font-size: 1.3em;
 }
 
 h5 {
-  font-size: 1em;
+  font-size: 1.1em;
 }
 
 h6 {
-  font-size: 0.95em;
+  font-size: 0.9em;
 }
 
 ol,
 ul {
-  padding: 0px 0px 12px 24px;
-  color: var(--text-secondary);
+  padding: 0px 0px 10px 20px;
 }
 
 ol li {
   counter-increment: section !important;
-  list-style-type: decimal;
-  margin-bottom: 6px;
+  list-style-type: none;
+}
+
+ol li:before {
+  font-weight: 700;
+  content: counters(section, ".") ". ";
 }
 
 ul {
@@ -95,18 +89,13 @@ ul {
   align-items: center;
   justify-content: center;
   background-size: cover;
-  margin: 12px;
-  border-radius: 12px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  transition: all 0.3s ease;
-  cursor: pointer;
+  margin: 5;
+  border-radius: 7px;
+  background: hsl(var(--main), 10%, 25%);
 }
 
 .selection-block:hover {
-  box-shadow: 0 8px 24px rgba(94, 124, 226, 0.2);
-  transform: translateY(-4px);
-  border-color: var(--primary);
+  box-shadow: 1px 1px 13px -5px #000;
 }
 
 .title:not(:last-child) {

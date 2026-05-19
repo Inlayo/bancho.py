@@ -56,7 +56,7 @@ async def http_conn() -> None:
 @app.after_serving
 async def shutdown() -> None:
     await glob.db.close()
-    await glob.redis.aclose()
+    await glob.redis.close()
     await glob.http.close()
 
 
