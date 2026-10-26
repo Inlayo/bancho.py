@@ -19,6 +19,7 @@ from app.api.v2.common import responses
 from app.api.v2.common.parameters import GameModeParam
 from app.api.v2.common.responses import Failure
 from app.api.v2.common.responses import Success
+from app.constants.gamemodes import GameMode
 from app.api.v2.models.scores import Score
 from app.api.v2.models.scores import ScoreBeatmap
 from app.api.v2.models.scores import ScoreDetail
@@ -87,7 +88,7 @@ async def get_top_plays(
     ],
 ) -> Success[list[ScoreDetail]] | Failure:
     rows = await scores_service.fetch_top_plays(
-        mode=mode,
+        mode=GameMode(mode),
         limit=limit,
         viewer=actor,
     )
