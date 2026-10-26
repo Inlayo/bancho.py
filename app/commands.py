@@ -304,10 +304,7 @@ async def maplink(ctx: Context) -> str | None:
         bmap = await Beatmap.from_md5(match.map_md5)
     elif spectating and spectating.status.map_id:
         bmap = await Beatmap.from_md5(spectating.status.map_md5)
-    elif (
-        ctx.player.last_np is not None
-        and ctx.player.last_np["bmap"] is not None
-    ):
+    elif ctx.player.last_np is not None and ctx.player.last_np["bmap"] is not None:
         bmap = ctx.player.last_np["bmap"]
 
     if bmap is None:
@@ -482,10 +479,7 @@ async def _with(ctx: Context) -> str | None:
     if ctx.recipient is not app.state.sessions.bot:
         return "This command can only be used in DM with bot."
 
-    if (
-        ctx.player.last_np is None
-        or ctx.player.last_np["bmap"] is None
-    ):
+    if ctx.player.last_np is None or ctx.player.last_np["bmap"] is None:
         return "Please /np a map first!"
 
     bmap = ctx.player.last_np["bmap"]
@@ -545,10 +539,7 @@ async def request(ctx: Context) -> str | None:
     if ctx.args:
         return "Invalid syntax: !request"
 
-    if (
-        ctx.player.last_np is None
-        or ctx.player.last_np["bmap"] is None
-    ):
+    if ctx.player.last_np is None or ctx.player.last_np["bmap"] is None:
         return "Please /np a map first!"
 
     bmap = ctx.player.last_np["bmap"]
@@ -659,10 +650,7 @@ async def _map(ctx: Context) -> str | None:
     ):
         return "Invalid syntax: !map <rank/unrank/love> <map/set>"
 
-    if (
-        ctx.player.last_np is None
-        or ctx.player.last_np["bmap"] is None
-    ):
+    if ctx.player.last_np is None or ctx.player.last_np["bmap"] is None:
         return "Please /np a map first!"
 
     bmap = ctx.player.last_np["bmap"]
@@ -893,10 +881,7 @@ async def user(ctx: Context) -> str | None:
         for priv in Privileges
         if player.priv & priv and bin(priv).count("1") == 1
     ][::-1]
-    if (
-        player.last_np is not None
-        and player.last_np["bmap"] is not None
-    ):
+    if player.last_np is not None and player.last_np["bmap"] is not None:
         last_np = player.last_np["bmap"].embed
     else:
         last_np = None
@@ -1213,10 +1198,7 @@ async def wipemap(ctx: Context) -> str | None:
     if ctx.args:
         return "Invalid syntax: !wipemap"
 
-    if (
-        ctx.player.last_np is None
-        or ctx.player.last_np["bmap"] is None
-    ):
+    if ctx.player.last_np is None or ctx.player.last_np["bmap"] is None:
         return "Please /np a map first!"
 
     map_md5 = ctx.player.last_np["bmap"].md5
@@ -2186,10 +2168,7 @@ async def pool_add(ctx: Context) -> str | None:
     if len(ctx.args) != 2:
         return "Invalid syntax: !pool add <name> <pick>"
 
-    if (
-        ctx.player.last_np is None
-        or ctx.player.last_np["bmap"] is None
-    ):
+    if ctx.player.last_np is None or ctx.player.last_np["bmap"] is None:
         return "Please /np a map first!"
 
     name, mods_slot = ctx.args

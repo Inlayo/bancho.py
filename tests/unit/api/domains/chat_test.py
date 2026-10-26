@@ -18,7 +18,6 @@ def test_iter_log_lines_reverse_returns_lines_and_offsets(log_data: bytes) -> No
     lines = list(_iter_log_lines_reverse(BytesIO(log_data)))
 
     assert [line for _, line in lines] == [
-        line.decode()
-        for line in reversed(log_data.splitlines())
+        line.decode() for line in reversed(log_data.splitlines())
     ]
     assert all(log_data[offset:].startswith(line.encode()) for offset, line in lines)

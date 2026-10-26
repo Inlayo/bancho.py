@@ -155,7 +155,10 @@ async def send_chat_channel_message(
             status_code=status.HTTP_403_FORBIDDEN,
         )
 
-    if configured_channel.write_priv and actor.priv & configured_channel.write_priv == 0:
+    if (
+        configured_channel.write_priv
+        and actor.priv & configured_channel.write_priv == 0
+    ):
         return responses.failure(
             message="You cannot write to this channel.",
             status_code=status.HTTP_403_FORBIDDEN,
