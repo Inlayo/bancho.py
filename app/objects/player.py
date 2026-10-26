@@ -109,7 +109,6 @@ class LastNp(TypedDict):
     bid: int
     mode_vn: int
     mods: Mods | None
-    timeout: float
 
 
 class OsuStream(StrEnum):

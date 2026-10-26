@@ -307,7 +307,6 @@ async def maplink(ctx: Context) -> str | None:
     elif (
         ctx.player.last_np is not None
         and ctx.player.last_np["bmap"] is not None
-        and time.time() < ctx.player.last_np["timeout"]
     ):
         bmap = ctx.player.last_np["bmap"]
 
@@ -486,7 +485,6 @@ async def _with(ctx: Context) -> str | None:
     if (
         ctx.player.last_np is None
         or ctx.player.last_np["bmap"] is None
-        or time.time() >= ctx.player.last_np["timeout"]
     ):
         return "Please /np a map first!"
 
@@ -550,7 +548,6 @@ async def request(ctx: Context) -> str | None:
     if (
         ctx.player.last_np is None
         or ctx.player.last_np["bmap"] is None
-        or time.time() >= ctx.player.last_np["timeout"]
     ):
         return "Please /np a map first!"
 
@@ -665,7 +662,6 @@ async def _map(ctx: Context) -> str | None:
     if (
         ctx.player.last_np is None
         or ctx.player.last_np["bmap"] is None
-        or time.time() >= ctx.player.last_np["timeout"]
     ):
         return "Please /np a map first!"
 
@@ -900,7 +896,6 @@ async def user(ctx: Context) -> str | None:
     if (
         player.last_np is not None
         and player.last_np["bmap"] is not None
-        and time.time() < player.last_np["timeout"]
     ):
         last_np = player.last_np["bmap"].embed
     else:
@@ -1221,7 +1216,6 @@ async def wipemap(ctx: Context) -> str | None:
     if (
         ctx.player.last_np is None
         or ctx.player.last_np["bmap"] is None
-        or time.time() >= ctx.player.last_np["timeout"]
     ):
         return "Please /np a map first!"
 
@@ -2195,7 +2189,6 @@ async def pool_add(ctx: Context) -> str | None:
     if (
         ctx.player.last_np is None
         or ctx.player.last_np["bmap"] is None
-        or time.time() >= ctx.player.last_np["timeout"]
     ):
         return "Please /np a map first!"
 

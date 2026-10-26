@@ -107,7 +107,6 @@ async def _update_last_np(
         "bid": bid,
         "mods": mods,
         "mode_vn": mode_vn,
-        "timeout": time.time() + 300,
     }
 
     bmap = await Beatmap.from_bid(bid)
