@@ -4,6 +4,7 @@ from collections.abc import Awaitable
 from dataclasses import dataclass
 from typing import Protocol
 
+from app.constants.beatmap_statuses import RankedStatus
 from app.constants.gamemodes import GameMode
 from app.constants.mods import Mods
 from app.constants.privileges import Privileges
@@ -51,6 +52,28 @@ class ScoresService:
     users: UsersRepository
     clans: ClansRepository
     fetch_beatmap: BeatmapFetcher
+
+    async def fetch_top_plays(
+        self,
+        *,
+        mode: GameMode,
+        limit: int,
+        viewer: User | None,
+    ) -> list[dict[str, object]]:
+        viewer_is_staff = (
+            viewer is not None and viewer.priv & Privileges.STAFF.value != 0
+        )
+        return await self.scores.fetch_top_play_rows(
+            mode=int(mode),
+            limit=limit,
+            map_statuses=[
+                RankedStatus.Ranked.value,
+                RankedStatus.Approved.value,
+            ],
+            minimum_pp=0,
+            include_hidden_players=viewer_is_staff,
+            always_visible_player_id=viewer.id if viewer is not None else None,
+        )
 
     async def fetch_scores(
         self,
@@ -149,6 +172,7 @@ class ScoresService:
         limit: int,
         include_loved: bool,
         include_failed: bool,
+        pp_only: bool = False,
     ) -> list[PlayerScoreWithBeatmap]:
         rows: list[PlayerScoreWithBeatmap] = []
         for row in await self.scores.fetch_player_score_listing_rows(
@@ -160,6 +184,7 @@ class ScoresService:
             limit=limit,
             include_loved=include_loved,
             include_failed=include_failed,
+            pp_only=pp_only,
         ):
             beatmap = await self.fetch_beatmap(row.map_md5)
             rows.append(

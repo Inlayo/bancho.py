@@ -23,7 +23,6 @@ from app.api.v2.models.scores import Score
 from app.api.v2.models.scores import ScoreBeatmap
 from app.api.v2.models.scores import ScoreDetail
 from app.api.v2.models.scores import ScorePlayer
-from app.constants.score_statuses import SubmissionStatus
 from app.repositories.users import User
 from app.services.replays import ReplayService
 from app.services.scores import ScoresService
@@ -77,7 +76,7 @@ async def get_all_scores(
 async def get_top_plays(
     *,
     mode: GameModeParam = Query(0),
-    limit: int = Query(12, ge=1, le=50),
+    limit: int = Query(10, ge=1, le=50),
     actor: Annotated[
         User | None,
         Depends(actors.get_optional_actor),
@@ -87,44 +86,13 @@ async def get_top_plays(
         Depends(api_dependencies.get_scores_service),
     ],
 ) -> Success[list[ScoreDetail]] | Failure:
-    listing = await scores_service.fetch_scores(
-        map_md5=None,
-        mods=None,
-        status=SubmissionStatus.BEST.value,
+    rows = await scores_service.fetch_top_plays(
         mode=mode,
-        user_id=None,
-        page=1,
-        page_size=limit * 10,
+        limit=limit,
         viewer=actor,
     )
 
-    top_rows = sorted(
-        listing.scores,
-        key=lambda row: (-row.pp, -row.score),
-    )[:limit]
-
-    response: list[ScoreDetail] = []
-    for score in top_rows:
-        data = await scores_service.fetch_score_with_context(score.id, viewer=actor)
-        if data is None:
-            continue
-
-        response.append(
-            ScoreDetail.model_validate(
-                {
-                    **dataclasses.asdict(data.score),
-                    "beatmap": ScoreBeatmap.model_validate(data.beatmap),
-                    "player": ScorePlayer(
-                        id=data.player.id,
-                        name=data.player.name,
-                        country=data.player.country,
-                        clan_id=data.player.clan_id or None,
-                        clan_name=data.clan.name if data.clan is not None else None,
-                        clan_tag=data.clan.tag if data.clan is not None else None,
-                    ),
-                },
-            ),
-        )
+    response = [ScoreDetail.model_validate(row) for row in rows]
 
     return responses.success(
         response,

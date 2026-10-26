@@ -1258,6 +1258,7 @@ class SendPrivateMessage(BasePacket):
                 r_match = NOW_PLAYING_RGX.match(msg)
                 if r_match:
                     is_current, bmap = await _update_last_np(player, r_match)
+                    resp_msg: str | None = None
 
                     if is_current and bmap is None:
                         resp_msg = "Could not find map."
@@ -1306,7 +1307,7 @@ class SendPrivateMessage(BasePacket):
                                 )
                             )
 
-                    if is_current:
+                    if is_current and resp_msg is not None:
                         player.send(resp_msg, sender=target)
 
         player.update_latest_activity_soon()

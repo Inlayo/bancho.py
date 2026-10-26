@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+from dataclasses import asdict
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -746,6 +748,7 @@ class ScoresRepository:
         limit: int,
         include_loved: bool,
         include_failed: bool,
+        pp_only: bool = False,
     ) -> list[PlayerScoreListingRow]:
         select_stmt = (
             select(
@@ -787,7 +790,7 @@ class ScoresRepository:
                 RankedStatus.Ranked.value,
                 RankedStatus.Approved.value,
             ]
-            if include_loved:
+            if include_loved and not pp_only:
                 allowed_map_statuses.append(RankedStatus.Loved.value)
 
             select_stmt = select_stmt.where(
@@ -796,6 +799,12 @@ class ScoresRepository:
             )
             sort_column = ScoresTable.pp
         else:
+            if pp_only:
+                select_stmt = select_stmt.where(
+                    MapsTable.status.in_(
+                        [RankedStatus.Ranked.value, RankedStatus.Approved.value],
+                    ),
+                )
             if not include_failed:
                 select_stmt = select_stmt.where(
                     ScoresTable.status != SubmissionStatus.FAILED.value,
@@ -976,7 +985,6 @@ class ScoresRepository:
             select_stmt = select_stmt.where(ScoresTable.mode == mode)
         if user_id is not None:
             select_stmt = select_stmt.where(ScoresTable.userid == user_id)
-
         rec = await self._database.fetch_one(select_stmt)
         assert rec is not None
         return int(rec["count"])
@@ -1010,12 +1018,111 @@ class ScoresRepository:
             select_stmt = select_stmt.where(ScoresTable.mode == mode)
         if user_id is not None:
             select_stmt = select_stmt.where(ScoresTable.userid == user_id)
-
         if page is not None and page_size is not None:
             select_stmt = select_stmt.limit(page_size).offset((page - 1) * page_size)
 
         scores = await self._database.fetch_all(select_stmt)
         return [self._deserialize_score(score) for score in scores]
+
+    async def fetch_top_play_rows(
+        self,
+        *,
+        mode: int,
+        limit: int,
+        map_statuses: Sequence[int],
+        minimum_pp: float,
+        include_hidden_players: bool,
+        always_visible_player_id: int | None,
+    ) -> list[dict[str, object]]:
+        select_stmt = (
+            select(
+                *READ_PARAMS,
+                MapsTable.id.label("beatmap_id"),
+                MapsTable.set_id.label("beatmap_set_id"),
+                MapsTable.md5.label("beatmap_md5"),
+                MapsTable.status.label("beatmap_status"),
+                MapsTable.artist.label("beatmap_artist"),
+                MapsTable.title.label("beatmap_title"),
+                MapsTable.version.label("beatmap_version"),
+                MapsTable.creator.label("beatmap_creator"),
+                MapsTable.last_update.label("beatmap_last_update"),
+                MapsTable.total_length.label("beatmap_total_length"),
+                MapsTable.max_combo.label("beatmap_max_combo"),
+                MapsTable.plays.label("beatmap_plays"),
+                MapsTable.passes.label("beatmap_passes"),
+                MapsTable.mode.label("beatmap_mode"),
+                MapsTable.bpm.label("beatmap_bpm"),
+                MapsTable.cs.label("beatmap_cs"),
+                MapsTable.ar.label("beatmap_ar"),
+                MapsTable.od.label("beatmap_od"),
+                MapsTable.hp.label("beatmap_hp"),
+                MapsTable.diff.label("beatmap_diff"),
+                UsersTable.id.label("player_id"),
+                UsersTable.name.label("player_name"),
+                UsersTable.country.label("player_country"),
+                UsersTable.clan_id.label("player_clan_id"),
+                ClansTable.name.label("player_clan_name"),
+                ClansTable.tag.label("player_clan_tag"),
+            )
+            .select_from(ScoresTable)
+            .join(MapsTable, MapsTable.md5 == ScoresTable.map_md5)
+            .join(UsersTable, UsersTable.id == ScoresTable.userid)
+            .outerjoin(ClansTable, ClansTable.id == UsersTable.clan_id)
+            .where(
+                ScoresTable.status == SubmissionStatus.BEST.value,
+                ScoresTable.mode == mode,
+                ScoresTable.pp > minimum_pp,
+                MapsTable.status.in_(map_statuses),
+            )
+            .order_by(ScoresTable.pp.desc(), ScoresTable.score.desc())
+            .limit(limit)
+        )
+
+        if not include_hidden_players:
+            select_stmt = select_stmt.where(
+                self._player_visibility_clause(always_visible_player_id),
+            )
+
+        rows = await self._database.fetch_all(select_stmt)
+        results: list[dict[str, object]] = []
+        for row in rows:
+            clan_id = row["player_clan_id"]
+            results.append(
+                {
+                    **asdict(self._deserialize_score(row)),
+                    "beatmap": {
+                        "id": row["beatmap_id"],
+                        "set_id": row["beatmap_set_id"],
+                        "md5": row["beatmap_md5"],
+                        "status": row["beatmap_status"],
+                        "artist": row["beatmap_artist"],
+                        "title": row["beatmap_title"],
+                        "version": row["beatmap_version"],
+                        "creator": row["beatmap_creator"],
+                        "last_update": row["beatmap_last_update"],
+                        "total_length": row["beatmap_total_length"],
+                        "max_combo": row["beatmap_max_combo"],
+                        "plays": row["beatmap_plays"],
+                        "passes": row["beatmap_passes"],
+                        "mode": row["beatmap_mode"],
+                        "bpm": row["beatmap_bpm"],
+                        "cs": row["beatmap_cs"],
+                        "ar": row["beatmap_ar"],
+                        "od": row["beatmap_od"],
+                        "hp": row["beatmap_hp"],
+                        "diff": row["beatmap_diff"],
+                    },
+                    "player": {
+                        "id": row["player_id"],
+                        "name": row["player_name"],
+                        "country": row["player_country"],
+                        "clan_id": clan_id or None,
+                        "clan_name": row["player_clan_name"],
+                        "clan_tag": row["player_clan_tag"],
+                    },
+                },
+            )
+        return results
 
     async def partial_update(
         self,

@@ -638,6 +638,7 @@ async def get_player_scores(
     limit: int = Query(25, ge=1, le=100),
     include_loved: bool = False,
     include_failed: bool = True,
+    pp_only: bool = False,
     actor: Annotated[
         User | None,
         Depends(actors.get_optional_actor),
@@ -671,6 +672,7 @@ async def get_player_scores(
         limit=limit,
         include_loved=include_loved,
         include_failed=include_failed,
+        pp_only=pp_only,
     )
 
     response = [
