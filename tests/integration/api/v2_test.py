@@ -11,7 +11,9 @@ from httpx import AsyncClient
 import app.state.services
 from app.constants.privileges import Privileges
 from app.constants.score_statuses import SubmissionStatus
+from app.repositories.channels import ChannelsRepository
 from app.repositories.users import UsersRepository
+from app.repositories.web_sessions import WebSessionsRepository
 from tests import factories
 
 API_HEADERS = {"Host": "api.cmyui.xyz"}
@@ -349,6 +351,53 @@ async def test_v2_player_search_returns_matching_public_players(
     body = response.json()
     assert body["meta"]["total"] == 1
     assert body["data"][0] == {"id": user.id, "name": user.name}
+
+
+async def test_v2_chat_channel_history_respects_read_privileges(
+    http_client: AsyncClient,
+) -> None:
+    suffix = secrets.token_hex(4)
+    channel_name = f"#private-{suffix}"
+    await ChannelsRepository(app.state.services.database).create(
+        name=channel_name,
+        topic="",
+        read_priv=int(Privileges.MODERATOR),
+        write_priv=0,
+        auto_join=False,
+    )
+
+    anonymous_channels = await http_client.get(
+        "/v2/chat/channels",
+        headers=API_HEADERS,
+    )
+    assert anonymous_channels.status_code == status.HTTP_200_OK
+    assert channel_name not in {
+        channel["name"] for channel in anonymous_channels.json()["data"]
+    }
+
+    channel_path = f"/v2/chat/channels/%23private-{suffix}/messages"
+    anonymous_history = await http_client.get(channel_path, headers=API_HEADERS)
+    assert anonymous_history.status_code == status.HTTP_401_UNAUTHORIZED
+
+    regular_user = await factories.create_user()
+    session_token = secrets.token_hex(32)
+    sessions = WebSessionsRepository(app.state.services.redis)
+    await sessions.create(session_token, regular_user.id, expiry_seconds=60)
+    http_client.cookies.set("bancho_session", session_token)
+    forbidden_history = await http_client.get(channel_path, headers=API_HEADERS)
+    assert forbidden_history.status_code == status.HTTP_403_FORBIDDEN
+
+    moderator = await factories.create_user(
+        priv=int(Privileges.UNRESTRICTED | Privileges.MODERATOR),
+    )
+    moderator_token = secrets.token_hex(32)
+    await sessions.create(moderator_token, moderator.id, expiry_seconds=60)
+    http_client.cookies.set("bancho_session", moderator_token)
+    allowed_history = await http_client.get(channel_path, headers=API_HEADERS)
+    assert allowed_history.status_code == status.HTTP_200_OK
+
+    await sessions.delete(session_token)
+    await sessions.delete(moderator_token)
 
 
 async def test_v2_player_scores_routes_return_seeded_scores(

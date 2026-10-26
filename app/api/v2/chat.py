@@ -198,15 +198,23 @@ async def send_chat_channel_message(
 @router.get("/chat/channels")
 async def get_chat_channels(
     *,
+    actor: Annotated[
+        User | None,
+        Depends(actors.get_optional_actor),
+    ],
     channels_repository: Annotated[
         ChannelsRepository,
         Depends(api_dependencies.get_channels_repository),
     ],
 ) -> Success[list[ChatChannel]] | Failure:
-    rows = sorted(
-        await channels_repository.fetch_many(),
-        key=lambda channel: channel.id,
-    )
+    rows = await channels_repository.fetch_many()
+    readable_rows = [
+        row
+        for row in rows
+        if not row.read_priv
+        or (actor is not None and actor.priv & row.read_priv != 0)
+    ]
+    readable_rows.sort(key=lambda channel: channel.id)
     return responses.success(
         [
             ChatChannel.model_validate(
@@ -219,9 +227,9 @@ async def get_chat_channels(
                     "auto_join": row.auto_join,
                 },
             )
-            for row in rows
+            for row in readable_rows
         ],
-        meta={"total": len(rows)},
+        meta={"total": len(readable_rows)},
     )
 
 
@@ -229,12 +237,39 @@ async def get_chat_channels(
 async def get_chat_channel_messages(
     channel_name: str,
     *,
+    actor: Annotated[
+        User | None,
+        Depends(actors.get_optional_actor),
+    ],
+    channels_repository: Annotated[
+        ChannelsRepository,
+        Depends(api_dependencies.get_channels_repository),
+    ],
     limit: int = Query(100, ge=1, le=200),
 ) -> Success[list[ChatMessage]] | Failure:
     if not channel_name.startswith("#"):
         return responses.failure(
             message="Invalid channel name.",
             status_code=400,
+        )
+
+    if actor is None:
+        return responses.failure(
+            message="Authentication required.",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    channel = await channels_repository.fetch_one(name=channel_name)
+    if channel is None:
+        return responses.failure(
+            message="Channel not found.",
+            status_code=status.HTTP_404_NOT_FOUND,
+        )
+
+    if channel.read_priv and actor.priv & channel.read_priv == 0:
+        return responses.failure(
+            message="You cannot read this channel.",
+            status_code=status.HTTP_403_FORBIDDEN,
         )
 
     messages = _read_channel_log_messages(channel_name, limit=limit)
