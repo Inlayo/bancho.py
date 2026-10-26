@@ -82,6 +82,7 @@ class _FakeScoresRepository:
         strong_mods_equality: bool,
         scope: str,
         limit: int,
+        offset: int = 0,
         include_loved: bool,
         include_failed: bool,
     ) -> list[PlayerScoreListingRow]:
@@ -93,6 +94,7 @@ class _FakeScoresRepository:
                 "strong_mods_equality": strong_mods_equality,
                 "scope": scope,
                 "limit": limit,
+                "offset": offset,
                 "include_loved": include_loved,
                 "include_failed": include_failed,
             },
@@ -357,6 +359,7 @@ async def test_scores_service_attaches_beatmaps_to_player_score_rows() -> None:
             "strong_mods_equality": True,
             "scope": "best",
             "limit": 50,
+            "offset": 0,
             "include_loved": True,
             "include_failed": False,
         },

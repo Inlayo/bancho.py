@@ -422,12 +422,24 @@ async def test_fetch_player_best_score_listing_rows_filters_best_ranked_and_love
         include_loved=True,
         include_failed=True,
     )
+    second_page = await scores.fetch_player_score_listing_rows(
+        user_id=player.id,
+        mode=0,
+        mods=None,
+        strong_mods_equality=True,
+        scope="best",
+        limit=1,
+        offset=1,
+        include_loved=True,
+        include_failed=True,
+    )
 
     assert [row.id for row in rows_without_loved] == [ranked_score.id]
     assert [row.id for row in rows_with_loved] == [
         loved_score.id,
         ranked_score.id,
     ]
+    assert [row.id for row in second_page] == [ranked_score.id]
 
 
 async def test_fetch_player_recent_score_listing_rows_filters_failed_and_mods() -> None:

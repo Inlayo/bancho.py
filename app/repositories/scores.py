@@ -746,6 +746,7 @@ class ScoresRepository:
         strong_mods_equality: bool,
         scope: str,
         limit: int,
+        offset: int = 0,
         include_loved: bool,
         include_failed: bool,
         pp_only: bool = False,
@@ -812,7 +813,11 @@ class ScoresRepository:
 
             sort_column = ScoresTable.play_time
 
-        select_stmt = select_stmt.order_by(sort_column.desc()).limit(limit)
+        select_stmt = (
+            select_stmt.order_by(sort_column.desc(), ScoresTable.id.desc())
+            .limit(limit)
+            .offset(offset)
+        )
 
         scores = await self._database.fetch_all(select_stmt)
         return [self._deserialize_player_score_listing_row(score) for score in scores]
