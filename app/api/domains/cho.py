@@ -90,14 +90,7 @@ async def _update_last_np(
 ) -> tuple[bool, Beatmap | None]:
     player._last_np_request_id += 1
     request_id = player._last_np_request_id
-    player.last_np = None
-
-    bmap = await Beatmap.from_bid(int(r_match["bid"]))
-    if request_id != player._last_np_request_id:
-        return False, None
-
-    if bmap is None:
-        return True, None
+    bid = int(r_match["bid"])
 
     if r_match["mode_vn"] is not None:
         mode_vn = {"Taiko": 1, "CatchTheBeat": 2, "osu!mania": 3}[
@@ -110,12 +103,24 @@ async def _update_last_np(
     if r_match["mods"] is not None:
         mods = Mods.from_np(r_match["mods"][1:], mode_vn)
 
+    bmap = app.state.cache.beatmap.get(bid)
     player.last_np = {
         "bmap": bmap,
+        "bid": bid,
         "mods": mods,
         "mode_vn": mode_vn,
         "timeout": time.time() + 300,
     }
+
+    bmap = await Beatmap.from_bid(bid)
+    if request_id != player._last_np_request_id:
+        return False, None
+
+    if bmap is None:
+        player.last_np = None
+        return True, None
+
+    player.last_np["bmap"] = bmap
     return True, bmap
 
 

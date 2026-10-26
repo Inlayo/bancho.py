@@ -58,11 +58,14 @@ async def test_latest_np_replaces_map_even_if_older_lookup_finishes_last(
         cho._update_last_np(player, _np_match(101)),
     )
     await first_lookup_started.wait()
+    assert player.last_np is not None
+    assert player.last_np["bid"] == 101
 
     is_current, updated_map = await cho._update_last_np(player, _np_match(202))
     assert is_current
     assert updated_map is second_map
     assert player.last_np is not None
+    assert player.last_np["bid"] == 202
     assert player.last_np["bmap"] is second_map
 
     finish_first_lookup.set()
