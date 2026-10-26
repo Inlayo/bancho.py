@@ -93,9 +93,7 @@ async def _update_last_np(
     bid = int(r_match["bid"])
 
     if r_match["mode_vn"] is not None:
-        mode_vn = {"Taiko": 1, "CatchTheBeat": 2, "osu!mania": 3}[
-            r_match["mode_vn"]
-        ]
+        mode_vn = {"Taiko": 1, "CatchTheBeat": 2, "osu!mania": 3}[r_match["mode_vn"]]
     else:
         mode_vn = player.status.mode.as_vanilla
 
