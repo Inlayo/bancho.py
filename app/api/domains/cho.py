@@ -83,6 +83,42 @@ NOW_PLAYING_RGX = re.compile(
     r"(?P<mods>(?: (?:-|\+|~|\|)\w+(?:~|\|)?)+)?\x01$",
 )
 
+
+async def _update_last_np(
+    player: Player,
+    r_match: re.Match[str],
+) -> tuple[bool, Beatmap | None]:
+    player._last_np_request_id += 1
+    request_id = player._last_np_request_id
+    player.last_np = None
+
+    bmap = await Beatmap.from_bid(int(r_match["bid"]))
+    if request_id != player._last_np_request_id:
+        return False, None
+
+    if bmap is None:
+        return True, None
+
+    if r_match["mode_vn"] is not None:
+        mode_vn = {"Taiko": 1, "CatchTheBeat": 2, "osu!mania": 3}[
+            r_match["mode_vn"]
+        ]
+    else:
+        mode_vn = player.status.mode.as_vanilla
+
+    mods = None
+    if r_match["mods"] is not None:
+        mods = Mods.from_np(r_match["mods"][1:], mode_vn)
+
+    player.last_np = {
+        "bmap": bmap,
+        "mods": mods,
+        "mode_vn": mode_vn,
+        "timeout": time.time() + 300,
+    }
+    return True, bmap
+
+
 FIRST_USER_ID = 3
 
 router = APIRouter(tags=["Bancho API"])
@@ -415,35 +451,7 @@ class SendMessage(BasePacket):
             # we'll update the player's last np stored.
             r_match = NOW_PLAYING_RGX.match(msg)
             if r_match:
-                # the player is /np'ing a map.
-                # save it to their player instance
-                # so we can use this elsewhere owo..
-                bmap = await Beatmap.from_bid(int(r_match["bid"]))
-
-                if bmap:
-                    # parse mode_vn int from regex
-                    if r_match["mode_vn"] is not None:
-                        mode_vn = {"Taiko": 1, "CatchTheBeat": 2, "osu!mania": 3}[
-                            r_match["mode_vn"]
-                        ]
-                    else:
-                        # use player mode if not specified
-                        mode_vn = player.status.mode.as_vanilla
-
-                    # parse the mods from regex
-                    mods = None
-                    if r_match["mods"] is not None:
-                        mods = Mods.from_np(r_match["mods"][1:], mode_vn)
-
-                    player.last_np = {
-                        "bmap": bmap,
-                        "mods": mods,
-                        "mode_vn": mode_vn,
-                        "timeout": time.time() + 300,  # /np's last 5mins
-                    }
-                else:
-                    # time out their previous /np
-                    player.last_np = None
+                await _update_last_np(player, r_match)
 
             t_chan.send(msg, sender=player)
 
@@ -1244,34 +1252,17 @@ class SendPrivateMessage(BasePacket):
                 # no commands triggered.
                 r_match = NOW_PLAYING_RGX.match(msg)
                 if r_match:
-                    # user is /np'ing a map.
-                    # save it to their player instance
-                    # so we can use this elsewhere owo..
-                    bmap = await Beatmap.from_bid(int(r_match["bid"]))
+                    is_current, bmap = await _update_last_np(player, r_match)
 
-                    if bmap:
-                        # parse mode_vn int from regex
+                    if is_current and bmap is None:
+                        resp_msg = "Could not find map."
+                    elif is_current and bmap is not None:
                         if r_match["mode_vn"] is not None:
                             mode_vn = {"Taiko": 1, "CatchTheBeat": 2, "osu!mania": 3}[
                                 r_match["mode_vn"]
                             ]
                         else:
-                            # use player mode if not specified
                             mode_vn = player.status.mode.as_vanilla
-
-                        # parse the mods from regex
-                        mods = None
-                        if r_match["mods"] is not None:
-                            mods = Mods.from_np(r_match["mods"][1:], mode_vn)
-
-                        player.last_np = {
-                            "bmap": bmap,
-                            "mode_vn": mode_vn,
-                            "mods": mods,
-                            "timeout": time.time() + 300,  # /np's last 5mins
-                        }
-
-                        # calculate generic pp values from their /np
 
                         osu_file_available = await ensure_osu_file_is_available(
                             bmap.id,
@@ -1283,10 +1274,8 @@ class SendPrivateMessage(BasePacket):
                                 "this incident has been reported."
                             )
                         else:
-                            # calculate pp for common generic values
                             mods = None
                             if r_match["mods"] is not None:
-                                # [1:] to remove leading whitespace
                                 mods_str = r_match["mods"][1:]
                                 mods = Mods.from_np(mods_str, mode_vn)
 
@@ -1312,13 +1301,8 @@ class SendPrivateMessage(BasePacket):
                                 )
                             )
 
-                    else:
-                        resp_msg = "Could not find map."
-
-                        # time out their previous /np
-                        player.last_np = None
-
-                    player.send(resp_msg, sender=target)
+                    if is_current:
+                        player.send(resp_msg, sender=target)
 
         player.update_latest_activity_soon()
 

@@ -1,16 +1,73 @@
 from __future__ import annotations
 
+import asyncio
+import re
 from datetime import date
 from ipaddress import IPv4Address
+from typing import cast
 
 import pytest
 
 from app.api.domains import cho
+from app.constants.privileges import Privileges
+from app.objects.beatmap import Beatmap
 from app.objects.player import WINE_ADAPTER_SENTINEL
 from app.objects.player import ClientDetails
 from app.objects.player import OsuStream
 from app.objects.player import OsuVersion
+from app.objects.player import Player
 from app.packets import MultiplayerMatch
+
+
+def _np_match(beatmap_id: int) -> re.Match[str]:
+    message = (
+        "\x01ACTION is playing "
+        f"[https://osu.ppy.sh/beatmapsets/1#osu/{beatmap_id} Artist - Title]\x01"
+    )
+    match = cho.NOW_PLAYING_RGX.match(message)
+    assert match is not None
+    return match
+
+
+@pytest.mark.asyncio
+async def test_latest_np_replaces_map_even_if_older_lookup_finishes_last(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    first_lookup_started = asyncio.Event()
+    finish_first_lookup = asyncio.Event()
+    first_map = cast(Beatmap, object())
+    second_map = cast(Beatmap, object())
+
+    async def fake_from_bid(cls: type[Beatmap], beatmap_id: int) -> Beatmap:
+        if beatmap_id == 101:
+            first_lookup_started.set()
+            await finish_first_lookup.wait()
+            return first_map
+        return second_map
+
+    monkeypatch.setattr(Beatmap, "from_bid", classmethod(fake_from_bid))
+
+    player = Player(
+        id=3,
+        name="test player",
+        priv=Privileges.UNRESTRICTED | Privileges.VERIFIED,
+        pw_bcrypt=None,
+        token=Player.generate_token(),
+    )
+    first_request = asyncio.create_task(
+        cho._update_last_np(player, _np_match(101)),
+    )
+    await first_lookup_started.wait()
+
+    is_current, updated_map = await cho._update_last_np(player, _np_match(202))
+    assert is_current
+    assert updated_map is second_map
+    assert player.last_np is not None
+    assert player.last_np["bmap"] is second_map
+
+    finish_first_lookup.set()
+    assert await first_request == (False, None)
+    assert player.last_np["bmap"] is second_map
 
 
 def test_parse_login_data_handles_protocol_trailing_newline() -> None:

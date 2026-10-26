@@ -288,6 +288,7 @@ class Player:
 
         # store the last beatmap /np'ed by the user.
         self.last_np: LastNp | None = None
+        self._last_np_request_id = 0
 
         self._packet_queue: list[bytes] = []
 
