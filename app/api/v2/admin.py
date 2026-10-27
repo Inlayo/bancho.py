@@ -485,6 +485,7 @@ async def update_admin_map_status(
     denied = _require_admin(actor)
     if denied is not None:
         return denied
+    assert actor is not None
 
     try:
         new_status = RankedStatus(args.status)
