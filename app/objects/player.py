@@ -584,17 +584,25 @@ class Player:
             self.enqueue(app.packets.match_join_fail())
             return False
 
+        if self.id in match.banned_players and self not in app.state.sessions.players.staff:
+            self.enqueue(app.packets.match_join_fail())
+            return False
+
         if self.id in match.tourney_clients:
             # the user is already in the match with a tourney client.
             # users cannot spectate themselves so this is not possible.
             self.enqueue(app.packets.match_join_fail())
             return False
 
-        if self is not match.host:
+        if self.id != match.host_id:
             # match already exists, we're simply joining.
             # NOTE: staff members have override to pw and can
             # simply use any to join a pw protected match.
-            if passwd != match.passwd and self not in app.state.sessions.players.staff:
+            if (
+                passwd != match.passwd
+                and self.id not in match.invited_players
+                and self not in app.state.sessions.players.staff
+            ):
                 log(f"{self} tried to join {match} w/ incorrect pw.", Ansi.LYELLOW)
                 self.enqueue(app.packets.match_join_fail())
                 return False
@@ -625,6 +633,7 @@ class Player:
         slot.status = SlotStatus.not_ready
         slot.player = self
         self.match = match
+        match.invited_players.discard(self.id)
 
         self.enqueue(app.packets.match_join_success(match))
         match.enqueue_state()
@@ -654,8 +663,11 @@ class Player:
 
         if all(s.empty() for s in self.match.slots):
             # multi is now empty, chat has been removed.
-            # remove the multi from the channels list.
             log(f"Match {self.match} finished.")
+
+            for handle in self.match.timer_handles:
+                handle.cancel()
+            self.match.timer_handles.clear()
 
             # cancel any pending start timers
             if self.match.starting is not None:
@@ -665,19 +677,27 @@ class Player:
 
                 self.match.starting = None
 
-            app.state.sessions.matches.remove(self.match)
-
             lobby = app.state.sessions.channels.get_by_name("#lobby")
-            if lobby:
-                lobby.enqueue(app.packets.dispose_match(self.match.id))
+            if self.match.tournament_room:
+                if self.match.chat not in app.state.sessions.channels:
+                    app.state.sessions.channels.append(self.match.chat)
+                if lobby:
+                    lobby.enqueue(app.packets.update_match(self.match, send_pw=False))
+            else:
+                app.state.sessions.matches.remove(self.match)
+                if self.match.chat in app.state.sessions.channels:
+                    app.state.sessions.channels.remove(self.match.chat)
+                if lobby:
+                    lobby.enqueue(app.packets.dispose_match(self.match.id))
 
         else:  # multi is not empty
-            if self is self.match.host:
+            if self.id == self.match.host_id:
                 # player was host, trasnfer to first occupied slot
                 for s in self.match.slots:
                     if s.player is not None:
                         self.match.host_id = s.player.id
-                        self.match.host.enqueue(app.packets.match_transfer_host())
+                        self.match.host_reference = s.player
+                        s.player.enqueue(app.packets.match_transfer_host())
                         break
 
             if self in self.match.referees:

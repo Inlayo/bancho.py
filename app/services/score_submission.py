@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import copy
 import hashlib
+from asyncio import get_running_loop
+from asyncio import TimerHandle
 from collections.abc import Awaitable
 from collections.abc import Callable
 from collections.abc import Sequence
@@ -124,6 +126,23 @@ class ReplayFile(Protocol):
 
 class AnnouncementChannel(Protocol):
     def send(self, msg: str, sender: Player, to_self: bool = False) -> None: ...
+
+
+@dataclass(frozen=True)
+class PendingFirstPlaceAnnouncement:
+    token: object
+    handle: TimerHandle
+    score: Score
+    previous_first_place_score: FirstPlaceScore | None
+    announce_channel: AnnouncementChannel
+    domain: str
+
+
+FIRST_PLACE_ANNOUNCEMENT_DELAY = 5
+_pending_first_place_announcements: dict[
+    tuple[str, int],
+    PendingFirstPlaceAnnouncement,
+] = {}
 
 
 @dataclass(frozen=True)
@@ -489,10 +508,7 @@ def notify_score_submitter_of_personal_best(
         return
 
     performance = format_score_submission_performance(score)
-    # send_notification(
-    # score.player,
-    # f"You achieved #{score.rank}! ({performance})",
-    # )
+    send_notification(score.player, f"You achieved #{score.rank}! ({performance})")
 
 
 def first_place_scoring_metric(score: Score) -> ScoringMetric:
@@ -559,6 +575,59 @@ def announce_first_place(
 
     assert announce_channel is not None
     announce_channel.send(" ".join(ann), sender=score.player, to_self=True)
+
+
+def _send_pending_first_place_announcement(
+    key: tuple[str, int],
+    token: object,
+) -> None:
+    pending = _pending_first_place_announcements.get(key)
+    if pending is None or pending.token is not token:
+        return
+
+    del _pending_first_place_announcements[key]
+    announce_first_place(
+        pending.score,
+        previous_first_place_score=pending.previous_first_place_score,
+        announce_channel=pending.announce_channel,
+        domain=pending.domain,
+    )
+
+
+def schedule_first_place_announcement(
+    score: Score,
+    *,
+    previous_first_place_score: FirstPlaceScore | None,
+    announce_channel: AnnouncementChannel | None,
+    domain: str,
+) -> None:
+    assert score.bmap is not None
+    assert score.player is not None
+
+    if not score_should_announce_first_place(score):
+        return
+
+    assert announce_channel is not None
+    key = (score.bmap.md5, score.mode.value)
+    previous = _pending_first_place_announcements.get(key)
+    if previous is not None:
+        previous.handle.cancel()
+
+    token = object()
+    handle = get_running_loop().call_later(
+        FIRST_PLACE_ANNOUNCEMENT_DELAY,
+        _send_pending_first_place_announcement,
+        key,
+        token,
+    )
+    _pending_first_place_announcements[key] = PendingFirstPlaceAnnouncement(
+        token=token,
+        handle=handle,
+        score=score,
+        previous_first_place_score=previous_first_place_score,
+        announce_channel=announce_channel,
+        domain=domain,
+    )
 
 
 def capture_score_submission_state(score: Score) -> ScoreSubmissionStateSnapshot:
@@ -1020,7 +1089,7 @@ class ScoreSubmissionService:
                 score,
                 send_notification=self.send_personal_best_notification,
             )
-            announce_first_place(
+            schedule_first_place_announcement(
                 score,
                 previous_first_place_score=persistence_result.previous_first_place_score,
                 announce_channel=self.announce_channel,

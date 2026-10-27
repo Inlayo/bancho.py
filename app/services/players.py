@@ -142,6 +142,7 @@ class PlayersService:
     async def fetch_players(
         self,
         *,
+        online_only: bool,
         priv: int | None,
         country: str | None,
         clan_id: int | None,
@@ -158,7 +159,17 @@ class PlayersService:
         viewer_is_staff = (
             viewer is not None and viewer.priv & Privileges.STAFF.value != 0
         )
+        online_ids = (
+            [
+                player.id
+                for player in self.online_players.unrestricted
+                if not player.is_bot_client
+            ]
+            if online_only
+            else None
+        )
         players = await self.users.fetch_many(
+            ids=online_ids,
             priv=priv,
             country=country,
             clan_id=clan_id,
@@ -171,6 +182,7 @@ class PlayersService:
             always_visible_id=viewer.id if viewer is not None else None,
         )
         total_players = await self.users.fetch_count(
+            ids=online_ids,
             priv=priv,
             country=country,
             clan_id=clan_id,

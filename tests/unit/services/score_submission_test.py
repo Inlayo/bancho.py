@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Callable
 from datetime import date
 from datetime import datetime
 from ipaddress import IPv4Address
@@ -30,6 +31,17 @@ from app.repositories.scores import DuplicateScoreError
 from app.repositories.scores import FirstPlaceScore
 from app.repositories.scores import ScorePerformanceRow
 from app.repositories.user_achievements import UserAchievement
+
+
+@pytest.fixture(autouse=True)
+def clear_pending_first_place_announcements():
+    for pending in score_submission._pending_first_place_announcements.values():
+        pending.handle.cancel()
+    score_submission._pending_first_place_announcements.clear()
+    yield
+    for pending in score_submission._pending_first_place_announcements.values():
+        pending.handle.cancel()
+    score_submission._pending_first_place_announcements.clear()
 
 
 class _FirstPlaceScoreFetch(TypedDict):
@@ -254,6 +266,40 @@ class _FakeAnnounceChannel:
 
     def send(self, msg: str, sender: object, to_self: bool = False) -> None:
         self.messages.append((msg, sender, to_self))
+
+
+class _FakeTimerHandle:
+    def __init__(
+        self,
+        delay: float,
+        callback: Callable[..., None],
+        args: tuple[object, ...],
+    ) -> None:
+        self.delay = delay
+        self.callback = callback
+        self.args = args
+        self.cancelled = False
+
+    def cancel(self) -> None:
+        self.cancelled = True
+
+    def fire(self) -> None:
+        self.callback(*self.args)
+
+
+class _FakeLoop:
+    def __init__(self) -> None:
+        self.handles: list[_FakeTimerHandle] = []
+
+    def call_later(
+        self,
+        delay: float,
+        callback: Callable[..., None],
+        *args: object,
+    ) -> _FakeTimerHandle:
+        handle = _FakeTimerHandle(delay, callback, args)
+        self.handles.append(handle)
+        return handle
 
 
 class _FakeFirstPlaceScoresRepository:
@@ -537,6 +583,47 @@ def test_announce_first_place_uses_score_for_vanilla_loved_score() -> None:
             True,
         ),
     ]
+
+
+def test_scheduled_first_place_announcement_restarts_for_new_leader(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake_loop = _FakeLoop()
+    monkeypatch.setattr(score_submission, "get_running_loop", lambda: fake_loop)
+
+    first_score = _score()
+    first_score.player.id = 7
+    first_score.player.name = "first-user"
+    latest_score = _score()
+    latest_score.player.id = 8
+    latest_score.player.name = "latest-user"
+    channel = _FakeAnnounceChannel()
+
+    score_submission.schedule_first_place_announcement(
+        first_score,
+        previous_first_place_score=FirstPlaceScore(id=6, name="old-user"),
+        announce_channel=channel,
+        domain="osu.cmyui.xyz",
+    )
+    score_submission.schedule_first_place_announcement(
+        latest_score,
+        previous_first_place_score=FirstPlaceScore(id=7, name="first-user"),
+        announce_channel=channel,
+        domain="osu.cmyui.xyz",
+    )
+
+    assert [handle.delay for handle in fake_loop.handles] == [5, 5]
+    assert fake_loop.handles[0].cancelled
+    assert channel.messages == []
+
+    fake_loop.handles[0].fire()
+    assert channel.messages == []
+    fake_loop.handles[1].fire()
+
+    assert len(channel.messages) == 1
+    assert "(Previous #1: [https://osu.cmyui.xyz/u/7 first-user])" in channel.messages[0][0]
+    assert channel.messages[0][1] is latest_score.player
+    assert score_submission._pending_first_place_announcements == {}
 
 
 @pytest.mark.parametrize(
@@ -1461,15 +1548,8 @@ async def test_submit_score_orchestrates_submission_side_effects(
     assert published_stats == [player, player]
     assert player.recent_scores[GameMode.RELAX_OSU] is submitted_score
     assert notifications == [(player, "You achieved #1! (10.45pp)")]
-    assert announce_channel.messages == [
-        (
-            "\x01ACTION achieved #1 on [https://osu.cmyui.xyz/b/315 test map] "
-            "+HDRX with 81.94% for 10.45pp. "
-            "(Previous #1: [https://osu.cmyui.xyz/u/9 old-user])",
-            submitted_score.player,
-            True,
-        ),
-    ]
+    assert announce_channel.messages == []
+    assert len(score_submission._pending_first_place_announcements) == 1
 
 
 async def test_submit_score_rejects_duplicate_inside_submission_lock(tmp_path) -> None:

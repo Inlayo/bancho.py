@@ -13,6 +13,8 @@ from app.constants.gamemodes import GameMode
 from app.constants.mods import Mods
 from app.constants.privileges import Privileges
 from app.objects.channel import Channel
+from app.objects.collections import Channels
+from app.objects.collections import Matches
 from app.objects.collections import Players
 from app.objects.match import Match
 from app.objects.match import MatchTeamTypes
@@ -243,3 +245,106 @@ async def test_multiplayer_abort_requires_a_referee_and_resets_match_state(
     )
     assert host.dequeue() == expected_packets
     assert guest.dequeue() == expected_packets
+
+
+async def test_tournament_room_commands_create_manage_and_close_room(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    creator = _player(
+        id=3,
+        name="creator",
+        priv=Privileges.UNRESTRICTED | Privileges.VERIFIED,
+    )
+    bot = _player(
+        id=1,
+        name="BanchoBot",
+        priv=Privileges.UNRESTRICTED,
+    )
+    players = Players()
+    players.append(creator)
+    matches = Matches()
+    channels = Channels()
+    monkeypatch.setattr(app.state.sessions, "players", players)
+    monkeypatch.setattr(app.state.sessions, "matches", matches)
+    monkeypatch.setattr(app.state.sessions, "channels", channels)
+    monkeypatch.setattr(app.state.sessions, "bot", bot, raising=False)
+
+    created = await process_commands(
+        creator,
+        bot,
+        f"{app.settings.COMMAND_PREFIX}mp make Test Tournament Room",
+    )
+
+    assert created is not None
+    assert created["resp"] is not None
+    match = creator.match
+    assert match is not None
+    assert match.tournament_room
+    assert match.creator_id == creator.id
+    assert match.has_public_history
+    assert matches[match.id] is match
+
+    renamed = await process_commands(
+        creator,
+        bot,
+        f"{app.settings.COMMAND_PREFIX}mp {match.id} name Updated Tournament Room",
+    )
+
+    assert renamed == {"resp": "Match name updated.", "hidden": False}
+    assert match.name == "Updated Tournament Room"
+
+    creator.leave_match()
+    assert creator.match is None
+    assert matches[match.id] is match
+    assert match.chat in channels
+
+    closed = await process_commands(
+        creator,
+        bot,
+        f"{app.settings.COMMAND_PREFIX}mp {match.id} close",
+    )
+
+    assert closed == {"resp": "Match closed.", "hidden": False}
+    assert matches[match.id] is None
+    assert creator.match is None
+
+
+async def test_invited_player_can_join_password_protected_match(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    host = _player(
+        id=3,
+        name="host",
+        priv=Privileges.UNRESTRICTED | Privileges.VERIFIED,
+    )
+    invitee = _player(
+        id=4,
+        name="invitee",
+        priv=Privileges.UNRESTRICTED | Privileges.VERIFIED,
+    )
+    outsider = _player(
+        id=5,
+        name="outsider",
+        priv=Privileges.UNRESTRICTED | Privileges.VERIFIED,
+    )
+    players = Players()
+    for player in (host, invitee, outsider):
+        players.append(player)
+
+    match = _match(host)
+    match.passwd = "secret"
+    channels = Channels()
+    channels.append(match.chat)
+    monkeypatch.setattr(app.state.sessions, "players", players)
+    monkeypatch.setattr(app.state.sessions, "channels", channels)
+
+    response = await process_commands(
+        host,
+        match.chat,
+        f"{app.settings.COMMAND_PREFIX}mp invite invitee",
+    )
+
+    assert response == {"resp": "Invited invitee to the match.", "hidden": False}
+    assert not outsider.join_match(match, "")
+    assert invitee.join_match(match, "")
+    assert invitee.id not in match.invited_players

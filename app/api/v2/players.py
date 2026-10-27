@@ -48,6 +48,7 @@ router = APIRouter()
 @router.get("/players")
 async def get_players(
     *,
+    online: bool = False,
     priv: int | None = None,
     country: str | None = None,
     clan_id: int | None = None,
@@ -66,6 +67,7 @@ async def get_players(
     ],
 ) -> Success[list[Player]] | Failure:
     listing = await players_service.fetch_players(
+        online_only=online,
         priv=priv,
         country=country,
         clan_id=clan_id,
@@ -85,6 +87,7 @@ async def get_players(
             "total": listing.total_players,
             "page": page,
             "page_size": page_size,
+            "online": online,
         },
     )
 

@@ -166,7 +166,14 @@ class Match:
         self.has_public_history = has_public_history
 
         self.host_id = host_id
+        self.host_reference: Player | None = None
+        self.creator_id = host_id
+        self.creator: Player | None = None
+        self.tournament_room = False
         self.referees: set[Player] = set()
+        self.banned_players: set[int] = set()
+        self.invited_players: set[int] = set()
+        self.timer_handles: list[TimerHandle] = []
 
         self.map_id = map_id
         self.map_md5 = map_md5
@@ -179,6 +186,7 @@ class Match:
 
         self.chat = chat_channel
         self.slots = [Slot() for _ in range(16)]
+        self.size = len(self.slots)
 
         # self.type = MatchTypes.standard
         self.team_type = team_type
@@ -201,8 +209,18 @@ class Match:
         self.tourney_clients: set[int] = set()  # player ids
 
     @property
-    def host(self) -> Player:
+    def host(self) -> Player | None:
+        if self.host_id == 0:
+            return None
+
         player = app.state.sessions.players.get(id=self.host_id)
+        if (
+            player is None
+            and self.tournament_room
+            and self.host_reference is not None
+            and self.host_reference.id == self.host_id
+        ):
+            return self.host_reference
         if player is None:
             raise ValueError(
                 f"Host with id {self.host_id} not found for match {self!r}",
@@ -232,7 +250,8 @@ class Match:
     @property
     def refs(self) -> set[Player]:
         """Return all players with referee permissions."""
-        return self.referees | {self.host}
+        host = self.host
+        return self.referees | ({host} if host is not None else set())
 
     def __repr__(self) -> str:
         return f"<{self.name} ({self.id})>"
@@ -263,8 +282,11 @@ class Match:
 
     def get_host_slot(self) -> Slot | None:
         """Return the slot containing the host."""
+        if self.host_id == 0:
+            return None
+
         for s in self.slots:
-            if s.player is not None and s.player is self.host:
+            if s.player is not None and s.player.id == self.host_id:
                 return s
 
         return None
@@ -280,6 +302,7 @@ class Match:
         self.win_condition = m.win_condition
         self.mods = m.mods
         self.name = m.name
+        self.size = m.size
 
     def enqueue(
         self,

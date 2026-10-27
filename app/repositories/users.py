@@ -217,6 +217,7 @@ class UsersRepository:
 
     async def fetch_count(
         self,
+        ids: list[int] | None = None,
         priv: int | None = None,
         country: str | None = None,
         clan_id: int | None = None,
@@ -233,6 +234,8 @@ class UsersRepository:
             select_stmt = select_stmt.where(
                 self._visibility_clause(always_visible_id),
             )
+        if ids is not None:
+            select_stmt = select_stmt.where(UsersTable.id.in_(ids))
         if priv is not None:
             select_stmt = select_stmt.where(UsersTable.priv == priv)
         if country is not None:

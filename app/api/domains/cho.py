@@ -210,6 +210,18 @@ async def bancho_view_matches() -> Response:
     match_id_max_length = (
         len(str(max(match.id for match in matches))) if len(matches) else 0
     )
+    match_rows: list[str] = []
+    for match in matches:
+        host = match.host
+        host_display = (
+            f"<{host.id}> {host.safe_name}" if host is not None else "None"
+        )
+        match_rows.append(
+            f"{(ON_GOING if match.in_progress else IDLE):<{max_status_length}} "
+            f"({match.id:>{match_id_max_length}}): {match.name}\n-- "
+            f"{BEATMAP:<{max_properties_length}}: {match.map_name}\n-- "
+            f"{HOST:<{max_properties_length}}: {host_display}",
+        )
 
     return HTMLResponse(
         f"""
@@ -217,14 +229,7 @@ async def bancho_view_matches() -> Response:
 <body style="font-family: monospace;  white-space: pre-wrap; background:#222; color:#fff;"><a href="/">back</a>
 matches:
 {
-            new_line.join(
-                f'''{(ON_GOING if m.in_progress else IDLE):<{max_status_length}} ({m.id:>{match_id_max_length}}): {m.name}
--- '''
-                + f"{new_line}-- ".join([
-                    f'{BEATMAP:<{max_properties_length}}: {m.map_name}',
-                    f'{HOST:<{max_properties_length}}: <{m.host.id}> {m.host.safe_name}',
-                ]) for m in matches
-            )
+            new_line.join(match_rows)
         }
 </body>
 </html>""",
@@ -1519,7 +1524,7 @@ class MatchLock(BasePacket):
         if player.match is None:
             return
 
-        if player is not player.match.host:
+        if player.id != player.match.host_id:
             log(f"{player} attempted to lock match as non-host.", Ansi.LYELLOW)
             return
 
@@ -1532,7 +1537,7 @@ class MatchLock(BasePacket):
         if slot.status == SlotStatus.locked:
             slot.status = SlotStatus.open
         else:
-            if slot.player is player.match.host:
+            if slot.player is not None and slot.player.id == player.match.host_id:
                 # don't allow the match host to kick
                 # themselves by clicking their crown
                 return
@@ -1564,7 +1569,7 @@ class MatchChangeSettings(BasePacket):
         if player.match is None:
             return
 
-        if player is not player.match.host:
+        if player.id != player.match.host_id:
             log(f"{player} attempted to change settings as non-host.", Ansi.LYELLOW)
             return
 
@@ -1621,7 +1626,12 @@ class MatchChangeSettings(BasePacket):
                 player.match.map_id = bmap.id
                 player.match.map_md5 = bmap.md5
                 player.match.map_name = bmap.full_name
-                player.match.mode = GameMode(player.match.host.status.mode.as_vanilla)
+                host = player.match.host
+                player.match.mode = (
+                    GameMode(host.status.mode.as_vanilla)
+                    if host is not None
+                    else bmap.mode
+                )
             else:
                 player.match.map_id = self.match_data.map_id
                 player.match.map_md5 = self.match_data.map_md5
@@ -1683,7 +1693,7 @@ class MatchStart(BasePacket):
         if player.match is None:
             return
 
-        if player is not player.match.host:
+        if player.id != player.match.host_id:
             log(f"{player} attempted to start match as non-host.", Ansi.LYELLOW)
             return
 
@@ -1771,7 +1781,7 @@ class MatchChangeMods(BasePacket):
             return
 
         if player.match.freemods:
-            if player is player.match.host:
+            if player.id == player.match.host_id:
                 # allow host to set speed-changing mods.
                 player.match.mods = Mods(self.mods & SPEED_CHANGING_MODS)
 
@@ -1781,7 +1791,7 @@ class MatchChangeMods(BasePacket):
 
             slot.mods = Mods(self.mods & ~SPEED_CHANGING_MODS)
         else:
-            if player is not player.match.host:
+            if player.id != player.match.host_id:
                 log(f"{player} attempted to change mods as non-host.", Ansi.LYELLOW)
                 return
 
@@ -1911,7 +1921,7 @@ class MatchTransferHost(BasePacket):
         if player.match is None:
             return
 
-        if player is not player.match.host:
+        if player.id != player.match.host_id:
             log(f"{player} attempted to transfer host as non-host.", Ansi.LYELLOW)
             return
 
@@ -1925,7 +1935,8 @@ class MatchTransferHost(BasePacket):
             return
 
         player.match.host_id = target.id
-        player.match.host.enqueue(app.packets.match_transfer_host())
+        player.match.host_reference = target
+        target.enqueue(app.packets.match_transfer_host())
         player.match.enqueue_state()
 
 
@@ -2161,7 +2172,7 @@ class MatchChangePassword(BasePacket):
         if player.match is None:
             return
 
-        if player is not player.match.host:
+        if player.id != player.match.host_id:
             log(f"{player} attempted to change pw as non-host.", Ansi.LYELLOW)
             return
 

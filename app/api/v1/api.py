@@ -848,6 +848,7 @@ async def api_get_match(
             status_code=status.HTTP_404_NOT_FOUND,
         )
 
+    host = match.host
     return ORJSONResponse(
         {
             "status": "success",
@@ -856,7 +857,7 @@ async def api_get_match(
                 "mode": match.mode,
                 "mods": int(match.mods),
                 "seed": match.seed,
-                "host": {"id": match.host.id, "name": match.host.name},
+                "host": {"id": host.id, "name": host.name} if host is not None else None,
                 "refs": [
                     {"id": player.id, "name": player.name} for player in match.refs
                 ],

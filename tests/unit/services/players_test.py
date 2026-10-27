@@ -84,10 +84,20 @@ class _FakeStatsRepository:
         return 2 if player_id is not None else 0
 
 
+class _OnlinePlayer:
+    def __init__(self, id: int, is_bot_client: bool) -> None:
+        self.id = id
+        self.is_bot_client = is_bot_client
+
+
 class _FakeOnlinePlayers:
     def __init__(self) -> None:
         self.player = SimpleNamespace(id=3, name="cmyui")
-        self.unrestricted = {object(), object(), object()}
+        self.unrestricted = {
+            _OnlinePlayer(id=3, is_bot_client=False),
+            _OnlinePlayer(id=4, is_bot_client=False),
+            _OnlinePlayer(id=1, is_bot_client=True),
+        }
         self.get_calls: list[dict[str, object | None]] = []
         self.from_cache_or_sql_calls: list[dict[str, object | None]] = []
 
@@ -189,16 +199,34 @@ async def test_players_service_listing_visibility_rules() -> None:
     }
 
     # anonymous viewers only see public players
-    await service.fetch_players(page=1, page_size=50, viewer=None, **listing_filters)
+    await service.fetch_players(
+        online_only=False,
+        page=1,
+        page_size=50,
+        viewer=None,
+        **listing_filters,
+    )
     # signed-in players additionally see themselves
     regular = SimpleNamespace(id=5, priv=int(Privileges.UNRESTRICTED))
-    await service.fetch_players(page=1, page_size=50, viewer=regular, **listing_filters)
+    await service.fetch_players(
+        online_only=False,
+        page=1,
+        page_size=50,
+        viewer=regular,
+        **listing_filters,
+    )
     # staff see everyone
     staff = SimpleNamespace(
         id=6,
         priv=int(Privileges.UNRESTRICTED | Privileges.ADMINISTRATOR),
     )
-    await service.fetch_players(page=1, page_size=50, viewer=staff, **listing_filters)
+    await service.fetch_players(
+        online_only=False,
+        page=1,
+        page_size=50,
+        viewer=staff,
+        **listing_filters,
+    )
 
     visibility_args = [
         {
@@ -212,6 +240,30 @@ async def test_players_service_listing_visibility_rules() -> None:
         {"include_hidden": False, "always_visible_id": 5},
         {"include_hidden": True, "always_visible_id": 6},
     ]
+
+
+async def test_players_service_online_listing_uses_online_player_ids() -> None:
+    service = _service()
+    filters: dict[str, object] = {
+        "priv": None,
+        "country": None,
+        "clan_id": None,
+        "clan_priv": None,
+        "preferred_mode": None,
+        "play_style": None,
+    }
+
+    await service.fetch_players(
+        online_only=True,
+        page=2,
+        page_size=20,
+        viewer=None,
+        **filters,
+    )
+
+    assert set(service.users.fetch_many_calls[-1]["ids"]) == {3, 4}
+    assert service.users.fetch_many_calls[-1]["page"] == 2
+    assert set(service.users.fetch_count_calls[-1]["ids"]) == {3, 4}
     assert visibility_args == [
         {
             "include_hidden": call["include_hidden"],
