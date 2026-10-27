@@ -103,7 +103,10 @@ def _can_manage_target(actor: User, target_privileges: int) -> bool:
 @router.get("/admin/users")
 async def search_admin_users(
     *,
-    query: str = Query(..., min_length=2, max_length=32),
+    query: str | None = Query(None, min_length=2, max_length=32),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=100),
+    include_hidden: bool = True,
     actor: Annotated[
         User | None,
         Depends(actors.get_optional_actor),
@@ -119,12 +122,21 @@ async def search_admin_users(
 
     users_found = await users.fetch_many(
         name=query,
-        page=1,
-        page_size=25,
-        include_hidden=True,
+        page=page,
+        page_size=page_size,
+        include_hidden=include_hidden,
     )
     return responses.success(
-        [{"id": user.id, "name": user.name, "priv": user.priv} for user in users_found],
+        [
+            {
+                "id": user.id,
+                "name": user.name,
+                "priv": user.priv,
+                "country": user.country,
+                "latest_activity": user.latest_activity,
+            }
+            for user in users_found
+        ],
         meta={"total": len(users_found)},
     )
 
