@@ -71,7 +71,7 @@ def _require_admin(actor: User | None) -> Failure | None:
             message="Authentication required.",
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
-    if not actor.priv & (Privileges.ADMINISTRATOR.value | Privileges.DEVELOPER.value):
+    if not actor.priv & Privileges.ADMINISTRATOR.value:
         return responses.failure(
             message="Administrator access required.",
             status_code=status.HTTP_403_FORBIDDEN,
