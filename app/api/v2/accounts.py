@@ -20,6 +20,8 @@ from app.api.v2.models.accounts import PasswordResetRequest
 from app.api.v2.models.accounts import RegistrationRequest
 from app.api.v2.models.accounts import TokenRequest
 from app.api.v2.models.players import Player
+from app.discord import format_audit_event
+from app.discord import send_audit_log
 from app.services.accounts import AccountRegistrationService
 from app.services.accounts import validate_password
 from app.services.captcha import CaptchaService
@@ -97,12 +99,33 @@ async def send_email_verification(
     ],
 ) -> Success[None] | Failure:
     try:
-        await email_auth_service.send_registration_verification(args.email)
-    except RuntimeError:
+        token_reference = await email_auth_service.send_registration_verification(
+            args.email,
+        )
+    except RuntimeError as exc:
+        local_part, _, domain = args.email.partition("@")
+        masked_email = f"{local_part[:1]}***@{domain}"
+        send_audit_log(
+            format_audit_event(
+                "Registration verification email failed",
+                recipient=masked_email,
+                reason=str(exc),
+            ),
+        )
         return responses.failure(
             "Email delivery is not configured.",
             status.HTTP_503_SERVICE_UNAVAILABLE,
         )
+    local_part, _, domain = args.email.partition("@")
+    masked_email = f"{local_part[:1]}***@{domain}"
+    send_audit_log(
+        format_audit_event(
+            "Registration verification email sent",
+            recipient=masked_email,
+            token_reference=token_reference,
+            expires_in="1 hour",
+        ),
+    )
     return responses.success(None)
 
 

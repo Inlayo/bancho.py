@@ -21,6 +21,7 @@ from app.api.v2.common.responses import Success
 from app.constants.beatmap_statuses import RankedStatus
 from app.constants.gamemodes import GameMode
 from app.constants.privileges import Privileges
+from app.discord import format_audit_event
 from app.discord import send_audit_log
 from app.objects.beatmap import Beatmap
 from app.objects.player import Player
@@ -46,6 +47,24 @@ MANAGED_ROLE_PRIVILEGES = (
     | Privileges.DEVELOPER
 )
 BASE_PRIVILEGES = Privileges.UNRESTRICTED | Privileges.VERIFIED
+ROLE_LABELS = (
+    (Privileges.UNRESTRICTED, "Unrestricted"),
+    (Privileges.VERIFIED, "Verified"),
+    (Privileges.WHITELISTED, "Whitelisted"),
+    (Privileges.SUPPORTER, "Supporter"),
+    (Privileges.PREMIUM, "Premium"),
+    (Privileges.ALUMNI, "Alumni"),
+    (Privileges.TOURNEY_MANAGER, "Tournament manager"),
+    (Privileges.NOMINATOR, "Nominator"),
+    (Privileges.MODERATOR, "Moderator"),
+    (Privileges.ADMINISTRATOR, "Administrator"),
+    (Privileges.DEVELOPER, "Developer"),
+)
+
+
+def _role_names(privileges: int) -> str:
+    roles = [label for privilege, label in ROLE_LABELS if privileges & privilege.value]
+    return ", ".join(roles) or "None"
 
 
 class UpdatePrivilegesRequest(BaseModel):
@@ -236,10 +255,18 @@ async def update_admin_user_privileges(
     await target.update_privs(new_privileges)
     if previous_privileges != new_privileges and target.is_online:
         target.logout()
+    added_roles = new_privileges & ~previous_privileges & MANAGED_ROLE_PRIVILEGES
+    removed_roles = previous_privileges & ~new_privileges & MANAGED_ROLE_PRIVILEGES
     send_audit_log(
-        f"{actor.name} (id: {actor.id}) changed privileges for "
-        f"{target.name} (id: {target.id}) from {previous_privileges:#x} "
-        f"to {int(target.priv):#x}.",
+        format_audit_event(
+            "Privileges updated",
+            actor=f"{actor.name} (id: {actor.id})",
+            target=f"{target.name} (id: {target.id})",
+            added_roles=_role_names(int(added_roles)),
+            removed_roles=_role_names(int(removed_roles)),
+            previous_roles=_role_names(int(previous_privileges)),
+            current_roles=_role_names(int(target.priv)),
+        ),
     )
 
     return responses.success({"id": target.id, "priv": int(target.priv)})
@@ -430,8 +457,13 @@ async def wipe_admin_user_scores(
         app.state.sessions.players.enqueue(app.packets.user_stats(target))
     mode_description = "all modes" if args.mode is None else f"mode {args.mode}"
     send_audit_log(
-        f"{actor.name} (id: {actor.id}) wiped {mode_description} scores for "
-        f"{target.name} (id: {target.id}); deleted {len(score_ids)} score(s).",
+        format_audit_event(
+            "Player scores wiped",
+            actor=f"{actor.name} (id: {actor.id})",
+            target=f"{target.name} (id: {target.id})",
+            modes=mode_description,
+            deleted_scores=str(len(score_ids)),
+        ),
     )
 
     return responses.success(
@@ -553,9 +585,13 @@ async def update_admin_map_status(
             cached_map.frozen = True
 
     send_audit_log(
-        f"{actor.name} (id: {actor.id}) changed beatmap status to "
-        f"{new_status!s} for {args.scope} #{map_id} "
-        f"(set #{beatmap.set_id}; {len(updated_maps)} map(s)).",
+        format_audit_event(
+            "Beatmap status updated",
+            actor=f"{actor.name} (id: {actor.id})",
+            beatmap=f"{args.scope} #{map_id} (set #{beatmap.set_id})",
+            status=str(new_status),
+            affected_maps=str(len(updated_maps)),
+        ),
     )
 
     return responses.success(

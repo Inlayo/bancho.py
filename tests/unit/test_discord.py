@@ -25,7 +25,28 @@ async def test_send_audit_log_posts_content_without_mention_pings(
 
     monkeypatch.setattr(discord, "Webhook", _FakeWebhook)
 
-    discord.send_audit_log("Restricted @everyone (id: 42).")
+    discord.send_audit_log(
+        discord.format_audit_event(
+            "Player restricted",
+            target="@everyone (id: 42)",
+        ),
+    )
     await asyncio.wait_for(posted_event.wait(), timeout=1)
 
-    assert posted == [("webhook-url", "Restricted (at)everyone (id: 42).")]
+    assert posted == [
+        (
+            "webhook-url",
+            "Player restricted | Target: (at)everyone (id: 42)",
+        ),
+    ]
+
+
+def test_format_audit_event_uses_consistent_labeled_fields() -> None:
+    assert discord.format_audit_event(
+        "Privileges updated",
+        actor="Inlayo (id: 3)",
+        added_roles="Administrator",
+    ) == (
+        "Privileges updated | Actor: Inlayo (id: 3) | "
+        "Added Roles: Administrator"
+    )

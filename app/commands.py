@@ -44,6 +44,7 @@ from app.constants.mods import Mods
 from app.constants.mods import modstr2mod_dict
 from app.constants.privileges import Privileges
 from app.constants.score_statuses import SubmissionStatus
+from app.discord import format_audit_event
 from app.discord import send_audit_log
 from app.logging import Ansi
 from app.logging import log
@@ -718,9 +719,13 @@ async def _map(ctx: Context) -> str | None:
         )
 
     send_audit_log(
-        f"{ctx.player} changed beatmap status to {new_status!s} "
-        f"for {ctx.args[1]} #{bmap.id} (set #{bmap.set_id}; "
-        f"{len(modified_beatmap_ids)} map(s)).",
+        format_audit_event(
+            "Beatmap status updated",
+            actor=f"{ctx.player.name} (id: {ctx.player.id})",
+            beatmap=f"{ctx.args[1]} #{bmap.id} (set #{bmap.set_id})",
+            status=str(new_status),
+            affected_maps=str(len(modified_beatmap_ids)),
+        ),
     )
     return f"{bmap.embed} updated to {new_status!s}."
 
@@ -1140,8 +1145,14 @@ async def addpriv(ctx: Context) -> str | None:
     previous_privileges = target.priv
     await target.add_privs(bits)
     send_audit_log(
-        f"{ctx.player} added privileges {bits!s} to {target} "
-        f"(previous: {previous_privileges:#x}; current: {int(target.priv):#x}).",
+        format_audit_event(
+            "Player privileges updated",
+            actor=f"{ctx.player.name} (id: {ctx.player.id})",
+            target=f"{target.name} (id: {target.id})",
+            added_roles=bits.name or f"{int(bits):#x}",
+            removed_roles="None",
+            privileges=f"{previous_privileges:#x} -> {int(target.priv):#x}",
+        ),
     )
     return f"Updated {target}'s privileges."
 
@@ -1175,8 +1186,14 @@ async def rmpriv(ctx: Context) -> str | None:
         )
 
     send_audit_log(
-        f"{ctx.player} removed privileges {bits!s} from {target} "
-        f"(previous: {previous_privileges:#x}; current: {int(target.priv):#x}).",
+        format_audit_event(
+            "Player privileges updated",
+            actor=f"{ctx.player.name} (id: {ctx.player.id})",
+            target=f"{target.name} (id: {target.id})",
+            added_roles="None",
+            removed_roles=bits.name or f"{int(bits):#x}",
+            privileges=f"{previous_privileges:#x} -> {int(target.priv):#x}",
+        ),
     )
     return f"Updated {target}'s privileges."
 
@@ -1208,7 +1225,13 @@ async def givedonator(ctx: Context) -> str | None:
 
     await target.add_privs(Privileges.SUPPORTER)
     send_audit_log(
-        f"{ctx.player} granted {ctx.args[1]} of donator status to {target}.",
+        format_audit_event(
+            "Donator status granted",
+            actor=f"{ctx.player.name} (id: {ctx.player.id})",
+            target=f"{target.name} (id: {target.id})",
+            duration=ctx.args[1],
+            role="Supporter",
+        ),
     )
 
     return f"Added {ctx.args[1]} of donator status to {target}."
