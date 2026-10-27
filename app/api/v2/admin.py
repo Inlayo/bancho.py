@@ -67,9 +67,7 @@ def _require_admin(actor: User | None) -> Failure | None:
             message="Authentication required.",
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
-    if not actor.priv & (
-        Privileges.ADMINISTRATOR.value | Privileges.DEVELOPER.value
-    ):
+    if not actor.priv & (Privileges.ADMINISTRATOR.value | Privileges.DEVELOPER.value):
         return responses.failure(
             message="Administrator access required.",
             status_code=status.HTTP_403_FORBIDDEN,
@@ -112,10 +110,7 @@ async def search_admin_users(
         include_hidden=True,
     )
     return responses.success(
-        [
-            {"id": user.id, "name": user.name, "priv": user.priv}
-            for user in users_found
-        ],
+        [{"id": user.id, "name": user.name, "priv": user.priv} for user in users_found],
         meta={"total": len(users_found)},
     )
 
@@ -201,10 +196,7 @@ async def update_admin_user_privileges(
         )
 
     new_roles = Privileges(args.privileges)
-    if (
-        not actor.priv & Privileges.DEVELOPER.value
-        and new_roles & Privileges.STAFF
-    ):
+    if not actor.priv & Privileges.DEVELOPER.value and new_roles & Privileges.STAFF:
         return responses.failure(
             message="Only developers can grant staff privileges.",
             status_code=status.HTTP_403_FORBIDDEN,
@@ -369,9 +361,7 @@ async def wipe_admin_user_scores(
         )
 
     modes = (
-        [GameMode(args.mode)]
-        if args.mode is not None
-        else GameMode.valid_gamemodes()
+        [GameMode(args.mode)] if args.mode is not None else GameMode.valid_gamemodes()
     )
     async with app.state.services.database.transaction():
         score_ids = await scores.delete_user_scores(user_id, args.mode)

@@ -211,8 +211,7 @@ async def get_chat_channels(
     readable_rows = [
         row
         for row in rows
-        if not row.read_priv
-        or (actor is not None and actor.priv & row.read_priv != 0)
+        if not row.read_priv or (actor is not None and actor.priv & row.read_priv != 0)
     ]
     readable_rows.sort(key=lambda channel: channel.id)
     return responses.success(

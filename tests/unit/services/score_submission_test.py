@@ -605,7 +605,10 @@ def test_scheduled_first_place_announcement_restarts_for_new_leader(
     fake_loop.handles[1].fire()
 
     assert len(channel.messages) == 1
-    assert "(Previous #1: [https://osu.cmyui.xyz/u/7 first-user])" in channel.messages[0][0]
+    assert (
+        "(Previous #1: [https://osu.cmyui.xyz/u/7 first-user])"
+        in channel.messages[0][0]
+    )
     assert channel.messages[0][1] is latest_score.player
     assert score_submission._pending_first_place_announcements == {}
 

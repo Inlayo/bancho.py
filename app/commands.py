@@ -37,8 +37,8 @@ import app.state
 import app.utils
 from app.constants import regexes
 from app.constants.beatmap_statuses import RankedStatus
-from app.constants.gamemodes import GameMode
 from app.constants.gamemodes import GAMEMODE_REPR_LIST
+from app.constants.gamemodes import GameMode
 from app.constants.mods import SPEED_CHANGING_MODS
 from app.constants.mods import Mods
 from app.constants.mods import modstr2mod_dict
@@ -46,9 +46,9 @@ from app.constants.privileges import Privileges
 from app.constants.score_statuses import SubmissionStatus
 from app.logging import Ansi
 from app.logging import log
-from app.objects.channel import Channel
 from app.objects.beatmap import Beatmap
 from app.objects.beatmap import ensure_osu_file_is_available
+from app.objects.channel import Channel
 from app.objects.match import Match
 from app.objects.match import MatchTeams
 from app.objects.match import MatchTeamTypes
@@ -1443,10 +1443,13 @@ async def _make_tournament_room(ctx: Context, *, private: bool) -> str:
         return "Multiplayer is not available while restricted or silenced."
     if ctx.player.match is not None:
         return "Leave your current match before creating a tournament room."
-    if sum(
-        match is not None and match.tournament_room
-        for match in app.state.sessions.matches
-    ) >= 4:
+    if (
+        sum(
+            match is not None and match.tournament_room
+            for match in app.state.sessions.matches
+        )
+        >= 4
+    ):
         return "A maximum of 4 tournament rooms may be open."
 
     name = " ".join(ctx.args).strip()
@@ -1572,10 +1575,9 @@ async def mp_start(ctx: Context, match: Match) -> str | None:
 
                 # make sure player didn't leave the
                 # match since queueing this start lol...
-                if (
-                    not match.tournament_room
-                    and ctx.player not in {slot.player for slot in match.slots}
-                ):
+                if not match.tournament_room and ctx.player not in {
+                    slot.player for slot in match.slots
+                }:
                     match.chat.send_bot("Player left match? (cancelled)")
                     return
 
@@ -2042,7 +2044,11 @@ async def mp_ban(ctx: Context, match: Match) -> str | None:
 @ensure_match
 async def mp_unbanplayer(ctx: Context, match: Match) -> str | None:
     """Unban a player from the room."""
-    if len(ctx.args) != 1 or not ctx.args[0].startswith("#") or not ctx.args[0][1:].isdecimal():
+    if (
+        len(ctx.args) != 1
+        or not ctx.args[0].startswith("#")
+        or not ctx.args[0][1:].isdecimal()
+    ):
         return "Invalid syntax: !mp unbanplayer #<userid>"
     player_id = int(ctx.args[0][1:])
     if player_id not in match.banned_players:

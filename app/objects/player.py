@@ -602,7 +602,10 @@ class Player:
             self.enqueue(app.packets.match_join_fail())
             return False
 
-        if self.id in match.banned_players and self not in app.state.sessions.players.staff:
+        if (
+            self.id in match.banned_players
+            and self not in app.state.sessions.players.staff
+        ):
             self.enqueue(app.packets.match_join_fail())
             return False
 

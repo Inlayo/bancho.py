@@ -857,7 +857,9 @@ async def api_get_match(
                 "mode": match.mode,
                 "mods": int(match.mods),
                 "seed": match.seed,
-                "host": {"id": host.id, "name": host.name} if host is not None else None,
+                "host": (
+                    {"id": host.id, "name": host.name} if host is not None else None
+                ),
                 "refs": [
                     {"id": player.id, "name": player.name} for player in match.refs
                 ],

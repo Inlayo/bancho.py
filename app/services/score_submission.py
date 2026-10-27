@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import copy
 import hashlib
-from asyncio import get_running_loop
 from asyncio import TimerHandle
+from asyncio import get_running_loop
 from collections.abc import Awaitable
 from collections.abc import Callable
 from collections.abc import Sequence

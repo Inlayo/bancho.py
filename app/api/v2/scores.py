@@ -19,11 +19,11 @@ from app.api.v2.common import responses
 from app.api.v2.common.parameters import GameModeParam
 from app.api.v2.common.responses import Failure
 from app.api.v2.common.responses import Success
-from app.constants.gamemodes import GameMode
 from app.api.v2.models.scores import Score
 from app.api.v2.models.scores import ScoreBeatmap
 from app.api.v2.models.scores import ScoreDetail
 from app.api.v2.models.scores import ScorePlayer
+from app.constants.gamemodes import GameMode
 from app.repositories.users import User
 from app.services.replays import ReplayService
 from app.services.scores import ScoresService

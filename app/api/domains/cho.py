@@ -213,9 +213,7 @@ async def bancho_view_matches() -> Response:
     match_rows: list[str] = []
     for match in matches:
         host = match.host
-        host_display = (
-            f"<{host.id}> {host.safe_name}" if host is not None else "None"
-        )
+        host_display = f"<{host.id}> {host.safe_name}" if host is not None else "None"
         match_rows.append(
             f"{(ON_GOING if match.in_progress else IDLE):<{max_status_length}} "
             f"({match.id:>{match_id_max_length}}): {match.name}\n-- "

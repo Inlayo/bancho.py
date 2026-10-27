@@ -8,10 +8,10 @@ from datetime import datetime
 import pymysql
 from sqlalchemy import Column
 from sqlalchemy import DateTime
-from sqlalchemy import delete
 from sqlalchemy import Index
 from sqlalchemy import Integer
 from sqlalchemy import String
+from sqlalchemy import delete
 from sqlalchemy import func
 from sqlalchemy import insert
 from sqlalchemy import or_
@@ -975,9 +975,7 @@ class ScoresRepository:
             select_stmt = select_stmt.where(ScoresTable.mode == mode)
             delete_stmt = delete_stmt.where(ScoresTable.mode == mode)
 
-        score_ids = [
-            row["id"] for row in await self._database.fetch_all(select_stmt)
-        ]
+        score_ids = [row["id"] for row in await self._database.fetch_all(select_stmt)]
         if score_ids:
             await self._database.execute(delete_stmt)
         return score_ids
