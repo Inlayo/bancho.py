@@ -490,6 +490,24 @@ class Player:
         if self.is_online:
             self.logout()
 
+        async def send_restriction_email() -> None:
+            user = await get_legacy_repositories().users.fetch_one(
+                id=self.id,
+                fetch_all_fields=True,
+            )
+            if user is None or user.email is None:
+                log(f"Could not send restriction email to {self}: no email address.")
+                return
+
+            from app.services.email_auth import send_restriction_notice
+
+            try:
+                await send_restriction_notice(user.email, self.name)
+            except RuntimeError as exc:
+                log(f"Failed to send restriction email to {self}: {exc}")
+
+        asyncio.create_task(send_restriction_email())  # type: ignore[unused-awaitable]
+
     async def unrestrict(self, admin: Player, reason: str) -> None:
         """Restrict `self` for `reason`, and log to sql."""
         await self.add_privs(Privileges.UNRESTRICTED)

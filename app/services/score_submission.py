@@ -21,6 +21,7 @@ from app._typing import _UnsetSentinel
 from app.adapters.database import Database
 from app.constants.beatmap_statuses import RankedStatus
 from app.constants.gamemodes import GameMode
+from app.constants.privileges import Privileges
 from app.constants.score_statuses import SubmissionStatus
 from app.constants.scoring_metrics import ScoringMetric
 from app.logging import Ansi
@@ -139,6 +140,16 @@ class PendingFirstPlaceAnnouncement:
 
 
 FIRST_PLACE_ANNOUNCEMENT_DELAY = 5
+AUTO_RESTRICT_PP_LIMITS = {
+    GameMode.VANILLA_OSU: 1500,
+    GameMode.VANILLA_TAIKO: 1000,
+    GameMode.VANILLA_CATCH: 750,
+    GameMode.VANILLA_MANIA: 1500,
+    GameMode.RELAX_OSU: 3000,
+    GameMode.RELAX_TAIKO: 1000,
+    GameMode.RELAX_CATCH: 750,
+    GameMode.AUTOPILOT_OSU: 3000,
+}
 _pending_first_place_announcements: dict[
     tuple[str, int],
     PendingFirstPlaceAnnouncement,
@@ -525,6 +536,32 @@ def score_should_announce_first_place(score: Score) -> bool:
         and score.rank == 1
         and not score.player.restricted
     )
+
+
+async def auto_restrict_for_pp_limit(
+    player: Player,
+    *,
+    mode: GameMode,
+    current_pp: int,
+    restriction_admin: Player,
+) -> bool:
+    limit = AUTO_RESTRICT_PP_LIMITS.get(mode)
+    if (
+        limit is None
+        or current_pp <= limit
+        or player.restricted
+        or player.priv & Privileges.WHITELISTED
+    ):
+        return False
+
+    await player.restrict(
+        admin=restriction_admin,
+        reason=(
+            f"automatically restricted after exceeding the {limit}pp limit "
+            f"for {mode!r} ({current_pp}pp)"
+        ),
+    )
+    return True
 
 
 async def fetch_previous_first_place_score(
@@ -1079,12 +1116,20 @@ class ScoreSubmissionService:
                 score.mode,
             )
 
-        if persistence_result.is_public_submission:
+        if score.status == SubmissionStatus.BEST:
+            await auto_restrict_for_pp_limit(
+                player,
+                mode=score.mode,
+                current_pp=persistence_result.current_stats.pp,
+                restriction_admin=self.restriction_admin,
+            )
+
+        if persistence_result.is_public_submission and not player.restricted:
             self.publish_user_stats(player)
 
         player.recent_scores[score.mode] = score
 
-        if score.status == SubmissionStatus.BEST:
+        if score.status == SubmissionStatus.BEST and not player.restricted:
             notify_score_submitter_of_personal_best(
                 score,
                 send_notification=self.send_personal_best_notification,

@@ -17,6 +17,53 @@ from app.repositories.users import UsersRepository
 TOKEN_EXPIRY_SECONDS = 60 * 60
 
 
+async def send_restriction_notice(email: str, username: str) -> None:
+    await _send_email(
+        email,
+        "Account restriction notice",
+        (
+            f"Hello {username},\n\n"
+            "Your account has been restricted on "
+            f"{settings.DOMAIN}.\n\n"
+            "If you believe this restriction was made in error, please join our "
+            f"Discord server at {settings.DISCORD_INVITE} and contact the staff "
+            "team to appeal.\n\n"
+            "This is an automated message. Please do not reply to this email."
+        ),
+    )
+
+
+async def _send_email(recipient: str, subject: str, body: str) -> None:
+    if not settings.SMTP_HOST:
+        raise RuntimeError("SMTP is not configured.")
+
+    message = EmailMessage()
+    message["From"] = formataddr(
+        (settings.SMTP_FROM_NAME, settings.SMTP_FROM_EMAIL),
+    )
+    message["To"] = recipient
+    message["Subject"] = subject
+    message.set_content(body)
+
+    def send_sync() -> None:
+        smtp_class = smtplib.SMTP_SSL if settings.SMTP_PORT == 465 else smtplib.SMTP
+        with smtp_class(
+            settings.SMTP_HOST,
+            settings.SMTP_PORT,
+            timeout=15,
+        ) as smtp:
+            if settings.SMTP_TLS and settings.SMTP_PORT != 465:
+                smtp.starttls()
+            if settings.SMTP_USER:
+                smtp.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+            smtp.send_message(message)
+
+    try:
+        await asyncio.to_thread(send_sync)
+    except (OSError, smtplib.SMTPException) as exc:
+        raise RuntimeError("Email delivery failed.") from exc
+
+
 def _token_key(kind: str, token_hash: str) -> str:
     return f"bancho:web_email:{kind}:{token_hash}"
 
@@ -142,31 +189,4 @@ class EmailAuthService:
         await self.redis.delete(_token_key(kind, _hash_token(token)))
 
     async def _send(self, recipient: str, subject: str, body: str) -> None:
-        if not settings.SMTP_HOST:
-            raise RuntimeError("SMTP is not configured.")
-
-        message = EmailMessage()
-        message["From"] = formataddr(
-            (settings.SMTP_FROM_NAME, settings.SMTP_FROM_EMAIL),
-        )
-        message["To"] = recipient
-        message["Subject"] = subject
-        message.set_content(body)
-
-        def send_sync() -> None:
-            smtp_class = smtplib.SMTP_SSL if settings.SMTP_PORT == 465 else smtplib.SMTP
-            with smtp_class(
-                settings.SMTP_HOST,
-                settings.SMTP_PORT,
-                timeout=15,
-            ) as smtp:
-                if settings.SMTP_TLS and settings.SMTP_PORT != 465:
-                    smtp.starttls()
-                if settings.SMTP_USER:
-                    smtp.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-                smtp.send_message(message)
-
-        try:
-            await asyncio.to_thread(send_sync)
-        except (OSError, smtplib.SMTPException) as exc:
-            raise RuntimeError("Email delivery failed.") from exc
+        await _send_email(recipient, subject, body)

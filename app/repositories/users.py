@@ -300,6 +300,7 @@ class UsersRepository:
         *,
         include_hidden: bool,
         always_visible_id: int | None = None,
+        name: str | None = None,
     ) -> list[User]:
         """Fetch multiple users from the database."""
         select_stmt = select(*READ_PARAMS)
@@ -309,6 +310,8 @@ class UsersRepository:
             )
         if ids is not None:
             select_stmt = select_stmt.where(UsersTable.id.in_(ids))
+        if name is not None:
+            select_stmt = select_stmt.where(UsersTable.name.like(f"%{name}%"))
         if priv is not None:
             select_stmt = select_stmt.where(UsersTable.priv == priv)
         if country is not None:

@@ -18,6 +18,7 @@ from app.constants.beatmap_statuses import RankedStatus
 from app.constants.clientflags import ClientFlags
 from app.constants.gamemodes import GameMode
 from app.constants.mods import Mods
+from app.constants.privileges import Privileges
 from app.constants.score_statuses import SubmissionStatus
 from app.constants.scoring_metrics import ScoringMetric
 from app.objects.player import ClientDetails
@@ -133,6 +134,71 @@ def _score() -> Score:
         set=SimpleNamespace(url="https://osu.cmyui.xyz/s/141"),
     )
     return score
+
+
+async def test_auto_restricts_players_over_mode_pp_limit() -> None:
+    class _RestrictablePlayer:
+        def __init__(self) -> None:
+            self.restricted = False
+            self.priv = Privileges.UNRESTRICTED
+            self.restriction: tuple[object, str] | None = None
+
+        async def restrict(self, *, admin: object, reason: str) -> None:
+            self.restriction = (admin, reason)
+            self.restricted = True
+
+    player = _RestrictablePlayer()
+    admin = object()
+
+    restricted = await score_submission.auto_restrict_for_pp_limit(
+        player,
+        mode=GameMode.VANILLA_OSU,
+        current_pp=1501,
+        restriction_admin=admin,
+    )
+
+    assert restricted
+    assert player.restricted
+    assert player.restriction == (
+        admin,
+        "automatically restricted after exceeding the 1500pp limit for vn!std "
+        "(1501pp)",
+    )
+
+
+@pytest.mark.parametrize(
+    ("mode", "pp", "privileges"),
+    [
+        (GameMode.VANILLA_OSU, 1500, Privileges.UNRESTRICTED),
+        (GameMode.VANILLA_OSU, 1501, Privileges.UNRESTRICTED | Privileges.WHITELISTED),
+        (GameMode.RELAX_MANIA, 9999, Privileges.UNRESTRICTED),
+    ],
+)
+async def test_auto_restriction_skips_limit_boundary_whitelist_and_unused_modes(
+    mode: GameMode,
+    pp: int,
+    privileges: Privileges,
+) -> None:
+    class _RestrictablePlayer:
+        def __init__(self) -> None:
+            self.restricted = False
+            self.priv = privileges
+            self.restriction: tuple[object, str] | None = None
+
+        async def restrict(self, *, admin: object, reason: str) -> None:
+            self.restriction = (admin, reason)
+            self.restricted = True
+
+    player = _RestrictablePlayer()
+    restricted = await score_submission.auto_restrict_for_pp_limit(
+        player,
+        mode=mode,
+        current_pp=pp,
+        restriction_admin=object(),
+    )
+
+    assert not restricted
+    assert player.restriction is None
 
 
 def _score_submission_request(

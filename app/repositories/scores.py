@@ -8,6 +8,7 @@ from datetime import datetime
 import pymysql
 from sqlalchemy import Column
 from sqlalchemy import DateTime
+from sqlalchemy import delete
 from sqlalchemy import Index
 from sqlalchemy import Integer
 from sqlalchemy import String
@@ -962,6 +963,24 @@ class ScoresRepository:
         select_stmt = select(*READ_PARAMS).where(ScoresTable.id == id)
         _score = await self._database.fetch_one(select_stmt)
         return self._deserialize_score(_score) if _score is not None else None
+
+    async def delete_user_scores(
+        self,
+        user_id: int,
+        mode: int | None = None,
+    ) -> list[int]:
+        select_stmt = select(ScoresTable.id).where(ScoresTable.userid == user_id)
+        delete_stmt = delete(ScoresTable).where(ScoresTable.userid == user_id)
+        if mode is not None:
+            select_stmt = select_stmt.where(ScoresTable.mode == mode)
+            delete_stmt = delete_stmt.where(ScoresTable.mode == mode)
+
+        score_ids = [
+            row["id"] for row in await self._database.fetch_all(select_stmt)
+        ]
+        if score_ids:
+            await self._database.execute(delete_stmt)
+        return score_ids
 
     async def fetch_count(
         self,

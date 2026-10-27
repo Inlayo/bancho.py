@@ -29,6 +29,7 @@ from app.repositories.favourites import FavouritesRepository
 from app.repositories.ingame_logins import IngameLoginsRepository
 from app.repositories.leaderboard_ranks import LeaderboardRanksRepository
 from app.repositories.mail import MailRepository
+from app.repositories.map_requests import MapRequestsRepository
 from app.repositories.maps import MapsRepository
 from app.repositories.ratings import RatingsRepository
 from app.repositories.relationships import RelationshipsRepository
@@ -165,6 +166,10 @@ def get_leaderboard_ranks_repository() -> LeaderboardRanksRepository:
 
 def get_maps_repository() -> MapsRepository:
     return MapsRepository(app.state.services.database)
+
+
+def get_map_requests_repository() -> MapRequestsRepository:
+    return MapRequestsRepository(app.state.services.database)
 
 
 def get_ratings_repository() -> RatingsRepository:
