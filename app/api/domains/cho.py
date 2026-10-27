@@ -1587,13 +1587,13 @@ class MatchChangeSettings(BasePacket):
                 player.match.mods &= SPEED_CHANGING_MODS
             else:
                 # host mods -> match mods.
-                host = player.match.get_host_slot()  # should always exist
-                assert host is not None
+                host_slot = player.match.get_host_slot()  # should always exist
+                assert host_slot is not None
 
                 # the match keeps any speed-changing mods,
                 # and also takes any mods the host has enabled.
                 player.match.mods &= SPEED_CHANGING_MODS
-                player.match.mods |= host.mods
+                player.match.mods |= host_slot.mods
 
                 for slot in player.match.slots:
                     if slot.player is not None:
@@ -1624,10 +1624,10 @@ class MatchChangeSettings(BasePacket):
                 player.match.map_id = bmap.id
                 player.match.map_md5 = bmap.md5
                 player.match.map_name = bmap.full_name
-                host = player.match.host
+                match_host = player.match.host
                 player.match.mode = (
-                    GameMode(host.status.mode.as_vanilla)
-                    if host is not None
+                    GameMode(match_host.status.mode.as_vanilla)
+                    if match_host is not None
                     else bmap.mode
                 )
             else:

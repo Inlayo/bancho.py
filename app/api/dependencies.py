@@ -101,6 +101,10 @@ def _increment_metric(metric: str) -> None:
         app.state.services.datadog.increment(metric)  # type: ignore[no-untyped-call]
 
 
+def _send_notification(player: Player, message: str) -> None:
+    player.enqueue(app.packets.notification(message))
+
+
 def _publish_user_stats(player: Player) -> None:
     app.state.sessions.players.enqueue(app.packets.user_stats(player))
 
