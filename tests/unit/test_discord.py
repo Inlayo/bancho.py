@@ -46,7 +46,4 @@ def test_format_audit_event_uses_consistent_labeled_fields() -> None:
         "Privileges updated",
         actor="Inlayo (id: 3)",
         added_roles="Administrator",
-    ) == (
-        "Privileges updated | Actor: Inlayo (id: 3) | "
-        "Added Roles: Administrator"
-    )
+    ) == ("Privileges updated | Actor: Inlayo (id: 3) | " "Added Roles: Administrator")

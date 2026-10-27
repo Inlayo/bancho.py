@@ -18,8 +18,7 @@ from app.state import services
 def format_audit_event(action: str, **fields: str) -> str:
     """Format an audit event as one concise, consistently labeled line."""
     details = " | ".join(
-        f"{name.replace('_', ' ').title()}: {value}"
-        for name, value in fields.items()
+        f"{name.replace('_', ' ').title()}: {value}" for name, value in fields.items()
     )
     return f"{action} | {details}" if details else action
 
