@@ -953,6 +953,7 @@ async def handle_osu_login_request(
 
     data += user_data
 
+    reconnect_after_login = False
     if not player.restricted:
         # player is unrestricted, two way data
         for o in app.state.sessions.players:
@@ -1000,6 +1001,7 @@ async def handle_osu_login_request(
         if not player.priv & Privileges.VERIFIED:
             # this is the player's first login, verify their
             # account & send info about the server/its usage.
+            reconnect_after_login = True
             await player.add_privs(Privileges.VERIFIED)
 
             if player.id == FIRST_USER_ID:
@@ -1062,6 +1064,11 @@ async def handle_osu_login_request(
     )
 
     player.update_latest_activity_soon()
+
+    if reconnect_after_login:
+        # Reconnect once so the client initializes features enabled by the
+        # privileges granted during this first login.
+        player.logout()
 
     return {"osu_token": player.token, "response_body": bytes(data)}
 

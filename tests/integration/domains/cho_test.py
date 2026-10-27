@@ -12,6 +12,7 @@ from httpx import AsyncClient
 
 import app.packets
 import app.state.sessions
+from app.constants.privileges import Privileges
 from app.packets import ClientPackets
 from app.repositories.users import UsersRepository
 
@@ -85,12 +86,29 @@ async def test_bancho_login_packet_dispatch_and_logout_lifecycle(
     )
 
     assert login_response.status_code == status.HTTP_200_OK
+    initial_token = login_response.headers["cho-token"]
+    UUID(initial_token)
+    assert app.state.sessions.players.get(token=initial_token) is None
+
+    reconnect_response = await http_client.post(
+        "/",
+        headers={**CHO_HEADERS, "osu-token": initial_token},
+        content=b"",
+    )
+    assert reconnect_response.content == app.packets.restart_server(0)
+
+    login_response = await http_client.post(
+        "/",
+        headers=CHO_HEADERS,
+        content=_login_body(username, password),
+    )
+    assert login_response.status_code == status.HTTP_200_OK
     token = login_response.headers["cho-token"]
     UUID(token)
     player = app.state.sessions.players.get(token=token)
     assert player is not None
     assert player.name == username
-    assert player.dequeue() == app.packets.bancho_privileges(player.bancho_priv)
+    assert player.priv & Privileges.VERIFIED
 
     stats_response = await http_client.post(
         "/",
@@ -107,10 +125,7 @@ async def test_bancho_login_packet_dispatch_and_logout_lifecycle(
         content=b"",
     )
 
-    assert restarted_response.content == (
-        app.packets.notification("Server has restarted.")
-        + app.packets.restart_server(0)
-    )
+    assert restarted_response.content == app.packets.restart_server(0)
 
     player.login_time -= 2
     logout_response = await http_client.post(

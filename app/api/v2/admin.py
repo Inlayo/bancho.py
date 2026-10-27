@@ -222,8 +222,8 @@ async def update_admin_user_privileges(
     )
     previous_privileges = target.priv
     await target.update_privs(new_privileges)
-    if target.is_online:
-        target.enqueue(app.packets.bancho_privileges(target.bancho_priv))
+    if previous_privileges != new_privileges and target.is_online:
+        target.logout()
     send_audit_log(
         f"{actor.name} (id: {actor.id}) changed privileges for "
         f"{target.name} (id: {target.id}) from {previous_privileges:#x} "
