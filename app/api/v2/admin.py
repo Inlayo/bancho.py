@@ -10,6 +10,7 @@ from fastapi.param_functions import Query
 from pydantic import BaseModel
 from pydantic import Field
 
+import app.packets
 import app.state
 import app.state.cache
 from app.api import dependencies as api_dependencies
@@ -20,8 +21,11 @@ from app.api.v2.common.responses import Success
 from app.constants.beatmap_statuses import RankedStatus
 from app.constants.gamemodes import GameMode
 from app.constants.privileges import Privileges
+from app.discord import send_audit_log
+from app.objects.beatmap import Beatmap
 from app.objects.player import Player
 from app.repositories.map_requests import MapRequestsRepository
+from app.repositories.maps import Map
 from app.repositories.maps import MapsRepository
 from app.repositories.scores import ScoresRepository
 from app.repositories.stats import StatsRepository
@@ -77,6 +81,16 @@ def _require_admin(actor: User | None) -> Failure | None:
 
 async def _load_target_player(user_id: int) -> Player | None:
     return await app.state.sessions.players.from_cache_or_sql(id=user_id)
+
+
+async def _load_admin_map(
+    map_id: int,
+    maps: MapsRepository,
+) -> Map | None:
+    if app.state.cache.beatmap.get(map_id) is None:
+        await Beatmap.from_bid(map_id)
+
+    return await maps.fetch_one(id=map_id)
 
 
 def _can_manage_target(actor: User, target_privileges: int) -> bool:
@@ -206,11 +220,15 @@ async def update_admin_user_privileges(
     new_privileges = (new_privileges & ~BASE_PRIVILEGES) | (
         target.priv & BASE_PRIVILEGES
     )
+    previous_privileges = target.priv
     await target.update_privs(new_privileges)
     if target.is_online:
-        import app.packets
-
         target.enqueue(app.packets.bancho_privileges(target.bancho_priv))
+    send_audit_log(
+        f"{actor.name} (id: {actor.id}) changed privileges for "
+        f"{target.name} (id: {target.id}) from {previous_privileges:#x} "
+        f"to {int(target.priv):#x}.",
+    )
 
     return responses.success({"id": target.id, "priv": int(target.priv)})
 
@@ -397,9 +415,12 @@ async def wipe_admin_user_scores(
         target.recent_scores[mode] = None
     await target.stats_from_sql_full()
     if target.is_online:
-        import app.packets
-
         app.state.sessions.players.enqueue(app.packets.user_stats(target))
+    mode_description = "all modes" if args.mode is None else f"mode {args.mode}"
+    send_audit_log(
+        f"{actor.name} (id: {actor.id}) wiped {mode_description} scores for "
+        f"{target.name} (id: {target.id}); deleted {len(score_ids)} score(s).",
+    )
 
     return responses.success(
         {"id": user_id, "mode": args.mode, "deleted_scores": len(score_ids)},
@@ -423,7 +444,7 @@ async def get_admin_map(
     if denied is not None:
         return denied
 
-    beatmap = await maps.fetch_one(id=map_id)
+    beatmap = await _load_admin_map(map_id, maps)
     if beatmap is None:
         return responses.failure(
             message="Beatmap not found.",
@@ -484,7 +505,7 @@ async def update_admin_map_status(
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
-    beatmap = await maps.fetch_one(id=map_id)
+    beatmap = await _load_admin_map(map_id, maps)
     if beatmap is None:
         return responses.failure(
             message="Beatmap not found.",
@@ -517,6 +538,12 @@ async def update_admin_map_status(
         for cached_map in cached_set.maps:
             cached_map.status = new_status
             cached_map.frozen = True
+
+    send_audit_log(
+        f"{actor.name} (id: {actor.id}) changed beatmap status to "
+        f"{new_status!s} for {args.scope} #{map_id} "
+        f"(set #{beatmap.set_id}; {len(updated_maps)} map(s)).",
+    )
 
     return responses.success(
         {

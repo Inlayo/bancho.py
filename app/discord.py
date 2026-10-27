@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from tenacity import retry
 from tenacity import stop_after_attempt
 from tenacity import wait_exponential
 
+from app import settings
+from app.logging import Ansi
+from app.logging import log
 from app.state import services
 
 
@@ -171,3 +175,22 @@ class Webhook:
             headers=headers,
         )
         response.raise_for_status()
+
+
+def send_audit_log(content: str) -> None:
+    """Post an audit event to the configured Discord webhook."""
+    if not settings.DISCORD_AUDIT_LOG_WEBHOOK:
+        return
+
+    safe_content = content.replace("@", "(at)")
+
+    async def post_audit_log() -> None:
+        try:
+            await Webhook(
+                settings.DISCORD_AUDIT_LOG_WEBHOOK,
+                content=safe_content,
+            ).post()
+        except Exception as exc:
+            log(f"Failed to post Discord audit log: {exc}", Ansi.LRED)
+
+    asyncio.create_task(post_audit_log())  # type: ignore[unused-awaitable]

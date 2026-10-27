@@ -44,6 +44,7 @@ from app.constants.mods import Mods
 from app.constants.mods import modstr2mod_dict
 from app.constants.privileges import Privileges
 from app.constants.score_statuses import SubmissionStatus
+from app.discord import send_audit_log
 from app.logging import Ansi
 from app.logging import log
 from app.objects.beatmap import Beatmap
@@ -716,6 +717,11 @@ async def _map(ctx: Context) -> str | None:
             map_ids=modified_beatmap_ids,
         )
 
+    send_audit_log(
+        f"{ctx.player} changed beatmap status to {new_status!s} "
+        f"for {ctx.args[1]} #{bmap.id} (set #{bmap.set_id}; "
+        f"{len(modified_beatmap_ids)} map(s)).",
+    )
     return f"{bmap.embed} updated to {new_status!s}."
 
 
@@ -1131,7 +1137,12 @@ async def addpriv(ctx: Context) -> str | None:
     if bits & Privileges.DONATOR != 0:
         return "Please use the !givedonator command to assign donator privileges to players."
 
+    previous_privileges = target.priv
     await target.add_privs(bits)
+    send_audit_log(
+        f"{ctx.player} added privileges {bits!s} to {target} "
+        f"(previous: {previous_privileges:#x}; current: {int(target.priv):#x}).",
+    )
     return f"Updated {target}'s privileges."
 
 
@@ -1153,6 +1164,7 @@ async def rmpriv(ctx: Context) -> str | None:
     if not target:
         return "Could not find user."
 
+    previous_privileges = target.priv
     await target.remove_privs(bits)
 
     if bits & Privileges.DONATOR != 0:
@@ -1162,6 +1174,10 @@ async def rmpriv(ctx: Context) -> str | None:
             {"user_id": target.id},
         )
 
+    send_audit_log(
+        f"{ctx.player} removed privileges {bits!s} from {target} "
+        f"(previous: {previous_privileges:#x}; current: {int(target.priv):#x}).",
+    )
     return f"Updated {target}'s privileges."
 
 
@@ -1191,6 +1207,9 @@ async def givedonator(ctx: Context) -> str | None:
     )
 
     await target.add_privs(Privileges.SUPPORTER)
+    send_audit_log(
+        f"{ctx.player} granted {ctx.args[1]} of donator status to {target}.",
+    )
 
     return f"Added {ctx.args[1]} of donator status to {target}."
 

@@ -21,7 +21,7 @@ from app.constants.gamemodes import GameMode
 from app.constants.mods import Mods
 from app.constants.privileges import ClientPrivileges
 from app.constants.privileges import Privileges
-from app.discord import Webhook
+from app.discord import send_audit_log
 from app.logging import Ansi
 from app.logging import log
 from app.objects.channel import Channel
@@ -481,10 +481,7 @@ class Player:
 
         log(log_msg, Ansi.LRED)
 
-        webhook_url = app.settings.DISCORD_AUDIT_LOG_WEBHOOK
-        if webhook_url:
-            webhook = Webhook(webhook_url, content=log_msg)
-            asyncio.create_task(webhook.post())  # type: ignore[unused-awaitable]
+        send_audit_log(log_msg)
 
         # refresh their client state
         if self.is_online:
@@ -503,6 +500,9 @@ class Player:
 
             try:
                 await send_restriction_notice(user.email, self.name)
+                send_audit_log(
+                    f"Restriction email sent to {self} (id: {self.id}).",
+                )
             except RuntimeError as exc:
                 log(f"Failed to send restriction email to {self}: {exc}")
 
@@ -536,10 +536,7 @@ class Player:
 
         log(log_msg, Ansi.LRED)
 
-        webhook_url = app.settings.DISCORD_AUDIT_LOG_WEBHOOK
-        if webhook_url:
-            webhook = Webhook(webhook_url, content=log_msg)
-            asyncio.create_task(webhook.post())  # type: ignore[unused-awaitable]
+        send_audit_log(log_msg)
 
         if self.is_online:
             # log the user out if they're offline, this
@@ -573,6 +570,9 @@ class Player:
             self.leave_match()
 
         log(f"Silenced {self}.", Ansi.LCYAN)
+        send_audit_log(
+            f"{admin} silenced {self} for {duration:g} seconds: {reason}.",
+        )
 
     async def unsilence(self, admin: Player, reason: str) -> None:
         """Unsilence `self`, and log to sql."""
@@ -594,6 +594,7 @@ class Player:
         self.enqueue(app.packets.silence_end(0))
 
         log(f"Unsilenced {self}.", Ansi.LCYAN)
+        send_audit_log(f"{admin} unsilenced {self}: {reason}.")
 
     def join_match(self, match: Match, passwd: str) -> bool:
         """Attempt to add `self` to `match`."""
