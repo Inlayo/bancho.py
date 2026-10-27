@@ -504,24 +504,6 @@ def format_score_submission_performance(score: Score) -> str:
     return f"{score.pp:,.2f}pp"
 
 
-def notify_score_submitter_of_personal_best(
-    score: Score,
-    *,
-    send_notification: Callable[[Player, str], None],
-) -> None:
-    assert score.bmap is not None
-    assert score.player is not None
-
-    if score.status != SubmissionStatus.BEST:
-        return
-
-    if not score.bmap.has_leaderboard:
-        return
-
-    performance = format_score_submission_performance(score)
-    send_notification(score.player, f"You achieved #{score.rank}! ({performance})")
-
-
 def first_place_scoring_metric(score: Score) -> ScoringMetric:
     return "pp" if score.mode >= GameMode.RELAX_OSU else "score"
 
@@ -880,7 +862,6 @@ class ScoreSubmissionService:
     user_achievements: UserAchievementsRepository
     ensure_osu_file_is_available: OsuFileAvailabilityChecker
     publish_user_stats: Callable[[Player], None]
-    send_personal_best_notification: Callable[[Player, str], None]
     announce_channel: AnnouncementChannel | None
     domain: str
     increment_metric: Callable[[str], None]
@@ -1130,10 +1111,6 @@ class ScoreSubmissionService:
         player.recent_scores[score.mode] = score
 
         if score.status == SubmissionStatus.BEST and not player.restricted:
-            notify_score_submitter_of_personal_best(
-                score,
-                send_notification=self.send_personal_best_notification,
-            )
             schedule_first_place_announcement(
                 score,
                 previous_first_place_score=persistence_result.previous_first_place_score,

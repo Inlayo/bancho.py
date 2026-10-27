@@ -255,6 +255,16 @@ async def test_tournament_room_commands_create_manage_and_close_room(
         name="creator",
         priv=Privileges.UNRESTRICTED | Privileges.VERIFIED,
     )
+    guest = _player(
+        id=4,
+        name="guest",
+        priv=Privileges.UNRESTRICTED | Privileges.VERIFIED,
+    )
+    spectator = _player(
+        id=5,
+        name="spectator",
+        priv=Privileges.UNRESTRICTED | Privileges.VERIFIED,
+    )
     bot = _player(
         id=1,
         name="BanchoBot",
@@ -262,6 +272,8 @@ async def test_tournament_room_commands_create_manage_and_close_room(
     )
     players = Players()
     players.append(creator)
+    players.append(guest)
+    players.append(spectator)
     matches = Matches()
     channels = Channels()
     monkeypatch.setattr(app.state.sessions, "players", players)
@@ -283,6 +295,10 @@ async def test_tournament_room_commands_create_manage_and_close_room(
     assert match.creator_id == creator.id
     assert match.has_public_history
     assert matches[match.id] is match
+
+    assert guest.join_match(match, "")
+    assert spectator.join_channel(match.chat)
+    match.tourney_clients.add(spectator.id)
 
     renamed = await process_commands(
         creator,
@@ -307,6 +323,11 @@ async def test_tournament_room_commands_create_manage_and_close_room(
     assert closed == {"resp": "Match closed.", "hidden": False}
     assert matches[match.id] is None
     assert creator.match is None
+    assert guest.match is None
+    assert spectator not in match.chat.players
+    assert match.tourney_clients == set()
+    assert all(slot.empty() for slot in match.slots)
+    assert match.chat not in channels
 
 
 async def test_invited_player_can_join_password_protected_match(

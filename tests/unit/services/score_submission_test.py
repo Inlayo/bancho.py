@@ -481,88 +481,6 @@ def test_write_replay_file_writes_replay_data(tmp_path) -> None:
     assert (tmp_path / "42.osr").read_bytes() == replay_data
 
 
-def test_notify_score_submitter_sends_pp_notification() -> None:
-    score = _score()
-    notifications: list[tuple[object, str]] = []
-
-    score_submission.notify_score_submitter_of_personal_best(
-        score,
-        send_notification=lambda player, message: notifications.append(
-            (player, message),
-        ),
-    )
-
-    assert notifications == [
-        (score.player, "You achieved #1! (10.45pp)"),
-    ]
-
-
-def test_notify_score_submitter_uses_score_for_vanilla_loved() -> None:
-    score = _score()
-    score.bmap.status = RankedStatus.Loved
-    score.mode = GameMode.VANILLA_OSU
-    score.score = 1_234_567
-    notifications: list[tuple[object, str]] = []
-
-    score_submission.notify_score_submitter_of_personal_best(
-        score,
-        send_notification=lambda player, message: notifications.append(
-            (player, message),
-        ),
-    )
-
-    assert notifications == [
-        (score.player, "You achieved #1! (1,234,567 score)"),
-    ]
-
-
-def test_notify_score_submitter_uses_pp_for_relax_loved() -> None:
-    score = _score()
-    score.bmap.status = RankedStatus.Loved
-    notifications: list[tuple[object, str]] = []
-
-    score_submission.notify_score_submitter_of_personal_best(
-        score,
-        send_notification=lambda player, message: notifications.append(
-            (player, message),
-        ),
-    )
-
-    assert notifications == [
-        (score.player, "You achieved #1! (10.45pp)"),
-    ]
-
-
-def test_notify_score_submitter_skips_non_best_score() -> None:
-    score = _score()
-    score.status = SubmissionStatus.SUBMITTED
-    notifications: list[tuple[object, str]] = []
-
-    score_submission.notify_score_submitter_of_personal_best(
-        score,
-        send_notification=lambda player, message: notifications.append(
-            (player, message),
-        ),
-    )
-
-    assert notifications == []
-
-
-def test_notify_score_submitter_skips_no_leaderboard() -> None:
-    score = _score()
-    score.bmap.has_leaderboard = False
-    notifications: list[tuple[object, str]] = []
-
-    score_submission.notify_score_submitter_of_personal_best(
-        score,
-        send_notification=lambda player, message: notifications.append(
-            (player, message),
-        ),
-    )
-
-    assert notifications == []
-
-
 async def test_fetch_previous_first_place_score_uses_score_for_vanilla_loved_score() -> (
     None
 ):
@@ -1105,7 +1023,6 @@ def _score_submission_service(
     user_achievements: object | None = None,
     ensure_osu_file_is_available: object | None = None,
     publish_user_stats=None,
-    send_personal_best_notification=None,
     announce_channel: object | None = None,
     domain: str = "osu.cmyui.xyz",
     increment_metric=None,
@@ -1127,8 +1044,6 @@ def _score_submission_service(
         ensure_osu_file_is_available=ensure_osu_file_is_available
         or _FakeOsuFileAvailability(),
         publish_user_stats=publish_user_stats or (lambda player: None),
-        send_personal_best_notification=send_personal_best_notification
-        or (lambda player, message: None),
         announce_channel=announce_channel,
         domain=domain,
         increment_metric=increment_metric or (lambda metric: None),
@@ -1552,7 +1467,6 @@ async def test_submit_score_orchestrates_submission_side_effects(
     maps = _FakeMapsRepository()
     user_achievements = _FakeUserAchievements()
     published_stats: list[object] = []
-    notifications: list[tuple[object, str]] = []
     metrics: list[str] = []
     integrity_failures = 0
     announce_channel = _FakeAnnounceChannel()
@@ -1575,9 +1489,6 @@ async def test_submit_score_orchestrates_submission_side_effects(
         user_achievements=user_achievements,
         ensure_osu_file_is_available=osu_file_availability,
         publish_user_stats=published_stats.append,
-        send_personal_best_notification=lambda player, message: notifications.append(
-            (player, message),
-        ),
         announce_channel=announce_channel,
         domain="osu.cmyui.xyz",
         increment_metric=metrics.append,
@@ -1613,7 +1524,6 @@ async def test_submit_score_orchestrates_submission_side_effects(
     assert player.updated_rank_modes == [GameMode.RELAX_OSU]
     assert published_stats == [player, player]
     assert player.recent_scores[GameMode.RELAX_OSU] is submitted_score
-    assert notifications == [(player, "You achieved #1! (10.45pp)")]
     assert announce_channel.messages == []
     assert len(score_submission._pending_first_place_announcements) == 1
 
@@ -1646,7 +1556,6 @@ async def test_submit_score_rejects_duplicate_inside_submission_lock(tmp_path) -
         user_achievements=_FakeUserAchievements(),
         ensure_osu_file_is_available=_FakeOsuFileAvailability(),
         publish_user_stats=lambda player: None,
-        send_personal_best_notification=lambda player, message: None,
         announce_channel=_FakeAnnounceChannel(),
         domain="osu.cmyui.xyz",
         increment_metric=metrics.append,
@@ -1709,7 +1618,6 @@ async def test_submit_score_maps_duplicate_insert_to_duplicate_submission(
         user_achievements=_FakeUserAchievements(),
         ensure_osu_file_is_available=_FakeOsuFileAvailability(),
         publish_user_stats=lambda player: None,
-        send_personal_best_notification=lambda player, message: None,
         announce_channel=_FakeAnnounceChannel(),
         domain="osu.cmyui.xyz",
         increment_metric=metrics.append,
@@ -1756,7 +1664,6 @@ async def test_submit_score_returns_error_when_beatmap_is_missing(tmp_path) -> N
         user_achievements=_FakeUserAchievements(),
         ensure_osu_file_is_available=_FakeOsuFileAvailability(),
         publish_user_stats=lambda player: None,
-        send_personal_best_notification=lambda player, message: None,
         announce_channel=_FakeAnnounceChannel(),
         domain="osu.cmyui.xyz",
         increment_metric=metrics.append,
@@ -1799,7 +1706,6 @@ async def test_submit_score_returns_error_when_player_authentication_fails(
         user_achievements=_FakeUserAchievements(),
         ensure_osu_file_is_available=_FakeOsuFileAvailability(),
         publish_user_stats=lambda player: None,
-        send_personal_best_notification=lambda player, message: None,
         announce_channel=_FakeAnnounceChannel(),
         domain="osu.cmyui.xyz",
         increment_metric=metrics.append,
@@ -1868,7 +1774,6 @@ async def test_submit_score_logs_integrity_failure_and_continues(
         user_achievements=_FakeUserAchievements(),
         ensure_osu_file_is_available=_FakeOsuFileAvailability(),
         publish_user_stats=lambda player: None,
-        send_personal_best_notification=lambda player, message: None,
         announce_channel=_FakeAnnounceChannel(),
         domain="osu.cmyui.xyz",
         increment_metric=lambda metric: None,

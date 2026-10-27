@@ -101,10 +101,6 @@ def _increment_metric(metric: str) -> None:
         app.state.services.datadog.increment(metric)  # type: ignore[no-untyped-call]
 
 
-def _send_notification(player: Player, message: str) -> None:
-    player.enqueue(app.packets.notification(message))
-
-
 def _publish_user_stats(player: Player) -> None:
     app.state.sessions.players.enqueue(app.packets.user_stats(player))
 
@@ -506,7 +502,6 @@ def get_score_submission_service(
         user_achievements=user_achievements,
         ensure_osu_file_is_available=ensure_osu_file_is_available,
         publish_user_stats=_publish_user_stats,
-        send_personal_best_notification=_send_notification,
         announce_channel=app.state.sessions.channels.get_by_name("#announce"),
         domain=settings.DOMAIN,
         increment_metric=_increment_metric,

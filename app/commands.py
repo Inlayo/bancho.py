@@ -2063,6 +2063,10 @@ async def mp_close(ctx: Context, match: Match) -> str | None:
 
     match.chat.send_bot(f"Room closed by {ctx.player.name}.")
     _cancel_match_timers(match)
+    for player in tuple(match.chat.players):
+        if player.match is not match:
+            player.leave_channel(match.chat)
+    match.tourney_clients.clear()
     match.tournament_room = False
     for player in tuple(match.chat.players):
         player.leave_match()
