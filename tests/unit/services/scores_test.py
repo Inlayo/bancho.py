@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime
 
 import app.services.scores as scores
@@ -242,6 +243,8 @@ class _FakeScoresRepository:
 class _FakeBeatmapFetcher:
     def __init__(self) -> None:
         self.md5s: list[str] = []
+        self.active_calls = 0
+        self.max_active_calls = 0
         self.known_beatmap = Beatmap(
             map_set=BeatmapSet(id=1, last_osuapi_check=datetime(2024, 1, 1)),
             md5="known-map",
@@ -254,10 +257,16 @@ class _FakeBeatmapFetcher:
         set_id: int = -1,
     ) -> Beatmap | None:
         self.md5s.append(md5)
-        if md5 == "known-map":
-            return self.known_beatmap
+        self.active_calls += 1
+        self.max_active_calls = max(self.max_active_calls, self.active_calls)
+        try:
+            await asyncio.sleep(0)
+            if md5 == "known-map":
+                return self.known_beatmap
 
-        return None
+            return None
+        finally:
+            self.active_calls -= 1
 
 
 class _FakeUsersRepository:
@@ -365,6 +374,7 @@ async def test_scores_service_attaches_beatmaps_to_player_score_rows() -> None:
         },
     ]
     assert beatmap_fetcher.md5s == ["known-map", "missing-map"]
+    assert beatmap_fetcher.max_active_calls == 2
 
 
 async def test_scores_service_fetches_map_score_listing_rows() -> None:

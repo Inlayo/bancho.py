@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Awaitable
 from dataclasses import dataclass
 from typing import Protocol
@@ -175,8 +176,7 @@ class ScoresService:
         include_failed: bool,
         pp_only: bool = False,
     ) -> list[PlayerScoreWithBeatmap]:
-        rows: list[PlayerScoreWithBeatmap] = []
-        for row in await self.scores.fetch_player_score_listing_rows(
+        score_rows = await self.scores.fetch_player_score_listing_rows(
             user_id=player_id,
             mode=int(mode),
             mods=int(mods) if mods is not None else None,
@@ -187,16 +187,27 @@ class ScoresService:
             include_loved=include_loved,
             include_failed=include_failed,
             pp_only=pp_only,
-        ):
-            beatmap = await self.fetch_beatmap(row.map_md5)
-            rows.append(
-                PlayerScoreWithBeatmap(
-                    score=row,
-                    beatmap=beatmap,
-                ),
-            )
+        )
 
-        return rows
+        semaphore = asyncio.Semaphore(8)
+
+        async def fetch_beatmap(md5: str) -> Beatmap | None:
+            async with semaphore:
+                return await self.fetch_beatmap(md5)
+
+        map_md5s = dict.fromkeys(row.map_md5 for row in score_rows)
+        beatmaps = await asyncio.gather(
+            *(fetch_beatmap(md5) for md5 in map_md5s),
+        )
+        beatmaps_by_md5 = dict(zip(map_md5s, beatmaps, strict=True))
+
+        return [
+            PlayerScoreWithBeatmap(
+                score=row,
+                beatmap=beatmaps_by_md5[row.map_md5],
+            )
+            for row in score_rows
+        ]
 
     async def fetch_player_most_played(
         self,
