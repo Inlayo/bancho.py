@@ -21,6 +21,7 @@ from app.api.v2.common.responses import Success
 from app.constants.beatmap_statuses import RankedStatus
 from app.constants.gamemodes import GameMode
 from app.constants.privileges import Privileges
+from app.constants.privileges import describe_privileges
 from app.discord import format_audit_event
 from app.discord import send_audit_log
 from app.objects.beatmap import Beatmap
@@ -47,24 +48,6 @@ MANAGED_ROLE_PRIVILEGES = (
     | Privileges.DEVELOPER
 )
 BASE_PRIVILEGES = Privileges.UNRESTRICTED | Privileges.VERIFIED
-ROLE_LABELS = (
-    (Privileges.UNRESTRICTED, "Unrestricted"),
-    (Privileges.VERIFIED, "Verified"),
-    (Privileges.WHITELISTED, "Whitelisted"),
-    (Privileges.SUPPORTER, "Supporter"),
-    (Privileges.PREMIUM, "Premium"),
-    (Privileges.ALUMNI, "Alumni"),
-    (Privileges.TOURNEY_MANAGER, "Tournament manager"),
-    (Privileges.NOMINATOR, "Nominator"),
-    (Privileges.MODERATOR, "Moderator"),
-    (Privileges.ADMINISTRATOR, "Administrator"),
-    (Privileges.DEVELOPER, "Developer"),
-)
-
-
-def _role_names(privileges: int) -> str:
-    roles = [label for privilege, label in ROLE_LABELS if privileges & privilege.value]
-    return ", ".join(roles) or "None"
 
 
 class UpdatePrivilegesRequest(BaseModel):
@@ -122,7 +105,7 @@ def _can_manage_target(actor: User, target_privileges: int) -> bool:
 @router.get("/admin/users")
 async def search_admin_users(
     *,
-    query: str | None = Query(None, min_length=2, max_length=32),
+    query: str | None = Query(None, min_length=1, max_length=32),
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
     include_hidden: bool = True,
@@ -262,10 +245,10 @@ async def update_admin_user_privileges(
             "Privileges updated",
             actor=f"{actor.name} (id: {actor.id})",
             target=f"{target.name} (id: {target.id})",
-            added_roles=_role_names(int(added_roles)),
-            removed_roles=_role_names(int(removed_roles)),
-            previous_roles=_role_names(int(previous_privileges)),
-            current_roles=_role_names(int(target.priv)),
+            added_roles=describe_privileges(added_roles),
+            removed_roles=describe_privileges(removed_roles),
+            previous_roles=describe_privileges(previous_privileges),
+            current_roles=describe_privileges(target.priv),
         ),
     )
 
@@ -590,7 +573,7 @@ async def update_admin_map_status(
             actor=f"{actor.name} (id: {actor.id})",
             beatmap=f"{args.scope} #{map_id} (set #{beatmap.set_id})",
             status=str(new_status),
-            affected_maps=str(len(updated_maps)),
+            maps_updated=str(len(updated_maps)),
         ),
     )
 

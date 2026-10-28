@@ -36,3 +36,23 @@ async def test_search_public_filters_to_verified_unrestricted_users() -> None:
     assert [(row.id, row.name) for row in rows] == [
         (visible.id, f"search-{suffix}-visible"),
     ]
+
+
+async def test_user_search_matches_exact_id_before_name_matches() -> None:
+    users = UsersRepository(app.state.services.database)
+    target = await factories.create_user()
+    name_match = await factories.create_user()
+    updated_name_match = await users.partial_update(
+        id=name_match.id,
+        name=f"player-{target.id}-match",
+    )
+    assert updated_name_match is not None
+
+    public_results = await users.search_public(name=str(target.id))
+    assert public_results[0].id == target.id
+
+    admin_results = await users.fetch_many(
+        include_hidden=True,
+        name=str(target.id),
+    )
+    assert admin_results[0].id == target.id

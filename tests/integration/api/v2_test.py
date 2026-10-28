@@ -82,6 +82,28 @@ async def test_v2_player_route_returns_not_found_for_missing_player(
     }
 
 
+async def test_v2_player_search_matches_user_id_and_accepts_single_digit(
+    http_client: AsyncClient,
+) -> None:
+    user = await factories.create_user()
+
+    response = await http_client.get(
+        "/v2/players/search",
+        headers=API_HEADERS,
+        params={"q": str(user.id)},
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["data"][0]["id"] == user.id
+
+    single_digit_response = await http_client.get(
+        "/v2/players/search",
+        headers=API_HEADERS,
+        params={"q": "3"},
+    )
+    assert single_digit_response.status_code == status.HTTP_200_OK
+
+
 async def test_v2_map_routes_return_seeded_map(
     http_client: AsyncClient,
 ) -> None:

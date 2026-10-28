@@ -38,6 +38,30 @@ class Privileges(IntFlag):
     STAFF = MODERATOR | ADMINISTRATOR | DEVELOPER
 
 
+PRIVILEGE_LABELS = (
+    (Privileges.UNRESTRICTED, "Unrestricted"),
+    (Privileges.VERIFIED, "Verified"),
+    (Privileges.WHITELISTED, "Whitelisted"),
+    (Privileges.SUPPORTER, "Supporter"),
+    (Privileges.PREMIUM, "Premium"),
+    (Privileges.ALUMNI, "Alumni"),
+    (Privileges.TOURNEY_MANAGER, "Tournament manager"),
+    (Privileges.NOMINATOR, "Nominator"),
+    (Privileges.MODERATOR, "Moderator"),
+    (Privileges.ADMINISTRATOR, "Administrator"),
+    (Privileges.DEVELOPER, "Developer"),
+)
+
+
+def describe_privileges(privileges: int | Privileges) -> str:
+    """Return a readable list of all individual privileges in a bitmask."""
+    return ", ".join(
+        label
+        for privilege, label in PRIVILEGE_LABELS
+        if privileges & privilege.value
+    ) or "None"
+
+
 @unique
 @pymysql_encode(escape_enum)
 class ClientPrivileges(IntFlag):

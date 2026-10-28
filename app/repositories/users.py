@@ -139,6 +139,13 @@ class UsersRepository:
             name=row["name"],
         )
 
+    @staticmethod
+    def _user_id_search_value(search: str) -> int | None:
+        if not search.isdecimal():
+            return None
+        user_id = int(search)
+        return user_id if user_id <= 2_147_483_647 else None
+
     async def create(
         self,
         name: str,
@@ -271,9 +278,7 @@ class UsersRepository:
         include_hidden: bool = False,
         always_visible_id: int | None = None,
     ) -> list[SearchUser]:
-        select_stmt = select(UsersTable.id, UsersTable.name).order_by(
-            UsersTable.id.asc(),
-        )
+        select_stmt = select(UsersTable.id, UsersTable.name)
 
         if not include_hidden:
             select_stmt = select_stmt.where(
@@ -281,7 +286,22 @@ class UsersRepository:
             )
 
         if name is not None:
-            select_stmt = select_stmt.where(UsersTable.name.like(f"%{name}%"))
+            name_filter = UsersTable.name.like(f"%{name}%")
+            user_id = self._user_id_search_value(name)
+            if user_id is not None:
+                select_stmt = select_stmt.where(
+                    or_(name_filter, UsersTable.id == user_id),
+                )
+                select_stmt = select_stmt.order_by(
+                    (UsersTable.id == user_id).desc(),
+                    UsersTable.id.asc(),
+                )
+            else:
+                select_stmt = select_stmt.where(name_filter).order_by(
+                    UsersTable.id.asc(),
+                )
+        else:
+            select_stmt = select_stmt.order_by(UsersTable.id.asc())
 
         users = await self._database.fetch_all(select_stmt)
         return [self._deserialize_search_user(user) for user in users]
@@ -311,7 +331,18 @@ class UsersRepository:
         if ids is not None:
             select_stmt = select_stmt.where(UsersTable.id.in_(ids))
         if name is not None:
-            select_stmt = select_stmt.where(UsersTable.name.like(f"%{name}%"))
+            name_filter = UsersTable.name.like(f"%{name}%")
+            user_id = self._user_id_search_value(name)
+            if user_id is not None:
+                select_stmt = select_stmt.where(
+                    or_(name_filter, UsersTable.id == user_id),
+                )
+                select_stmt = select_stmt.order_by(
+                    (UsersTable.id == user_id).desc(),
+                    UsersTable.id.asc(),
+                )
+            else:
+                select_stmt = select_stmt.where(name_filter)
         if priv is not None:
             select_stmt = select_stmt.where(UsersTable.priv == priv)
         if country is not None:
@@ -325,7 +356,8 @@ class UsersRepository:
         if play_style is not None:
             select_stmt = select_stmt.where(UsersTable.play_style == play_style)
 
-        select_stmt = select_stmt.order_by(UsersTable.id.asc())
+        if name is None or self._user_id_search_value(name) is None:
+            select_stmt = select_stmt.order_by(UsersTable.id.asc())
 
         if page is not None and page_size is not None:
             select_stmt = select_stmt.limit(page_size).offset((page - 1) * page_size)

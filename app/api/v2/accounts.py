@@ -99,9 +99,7 @@ async def send_email_verification(
     ],
 ) -> Success[None] | Failure:
     try:
-        token_reference = await email_auth_service.send_registration_verification(
-            args.email,
-        )
+        await email_auth_service.send_registration_verification(args.email)
     except RuntimeError as exc:
         local_part, _, domain = args.email.partition("@")
         masked_email = f"{local_part[:1]}***@{domain}"
@@ -122,7 +120,6 @@ async def send_email_verification(
         format_audit_event(
             "Registration verification email sent",
             recipient=masked_email,
-            token_reference=token_reference,
             expires_in="1 hour",
         ),
     )

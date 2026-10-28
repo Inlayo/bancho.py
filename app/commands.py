@@ -43,6 +43,7 @@ from app.constants.mods import SPEED_CHANGING_MODS
 from app.constants.mods import Mods
 from app.constants.mods import modstr2mod_dict
 from app.constants.privileges import Privileges
+from app.constants.privileges import describe_privileges
 from app.constants.score_statuses import SubmissionStatus
 from app.discord import format_audit_event
 from app.discord import send_audit_log
@@ -724,7 +725,7 @@ async def _map(ctx: Context) -> str | None:
             actor=f"{ctx.player.name} (id: {ctx.player.id})",
             beatmap=f"{ctx.args[1]} #{bmap.id} (set #{bmap.set_id})",
             status=str(new_status),
-            affected_maps=str(len(modified_beatmap_ids)),
+            maps_updated=str(len(modified_beatmap_ids)),
         ),
     )
     return f"{bmap.embed} updated to {new_status!s}."
@@ -1149,9 +1150,10 @@ async def addpriv(ctx: Context) -> str | None:
             "Player privileges updated",
             actor=f"{ctx.player.name} (id: {ctx.player.id})",
             target=f"{target.name} (id: {target.id})",
-            added_roles=bits.name or f"{int(bits):#x}",
+            added_roles=describe_privileges(bits & ~previous_privileges),
             removed_roles="None",
-            privileges=f"{previous_privileges:#x} -> {int(target.priv):#x}",
+            previous_roles=describe_privileges(previous_privileges),
+            current_roles=describe_privileges(target.priv),
         ),
     )
     return f"Updated {target}'s privileges."
@@ -1191,8 +1193,9 @@ async def rmpriv(ctx: Context) -> str | None:
             actor=f"{ctx.player.name} (id: {ctx.player.id})",
             target=f"{target.name} (id: {target.id})",
             added_roles="None",
-            removed_roles=bits.name or f"{int(bits):#x}",
-            privileges=f"{previous_privileges:#x} -> {int(target.priv):#x}",
+            removed_roles=describe_privileges(bits & previous_privileges),
+            previous_roles=describe_privileges(previous_privileges),
+            current_roles=describe_privileges(target.priv),
         ),
     )
     return f"Updated {target}'s privileges."

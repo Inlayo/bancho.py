@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC
+from datetime import datetime
 from typing import Any
 
 from tenacity import retry
@@ -15,12 +17,35 @@ from app.logging import log
 from app.state import services
 
 
-def format_audit_event(action: str, **fields: str) -> str:
-    """Format an audit event as one concise, consistently labeled line."""
-    details = " | ".join(
-        f"{name.replace('_', ' ').title()}: {value}" for name, value in fields.items()
+def format_audit_event(action: str, **fields: str) -> Embed:
+    """Create a compact, consistently formatted audit-log embed."""
+    normalized_action = action.casefold()
+    if any(
+        event in normalized_action
+        for event in ("unrestricted", "unsilenced", "granted", "email sent")
+    ):
+        color = 0x57F287
+    elif any(
+        event in normalized_action
+        for event in ("restricted", "silenced", "wiped", "failed", "removed")
+    ):
+        color = 0xED4245
+    else:
+        color = 0x5865F2
+
+    description = "\n".join(
+        f"**{name.replace('_', ' ').title()}:** "
+        f"{' '.join(value.replace('@', '(at)').split()) or '-'}"
+        for name, value in fields.items()
     )
-    return f"{action} | {details}" if details else action
+    embed = Embed(
+        title=action.replace("@", "(at)")[:256],
+        description=description[:4093] + ("..." if len(description) > 4096 else ""),
+        color=color,
+        timestamp=datetime.now(UTC).isoformat(),
+    )
+    embed.set_footer(text="bancho.py | Audit Log")
+    return embed
 
 
 class Footer:
@@ -185,19 +210,19 @@ class Webhook:
         response.raise_for_status()
 
 
-def send_audit_log(content: str) -> None:
+def send_audit_log(embed: Embed) -> None:
     """Post an audit event to the configured Discord webhook."""
     if not settings.DISCORD_AUDIT_LOG_WEBHOOK:
         return
 
-    safe_content = content.replace("@", "(at)")
-
     async def post_audit_log() -> None:
         try:
-            await Webhook(
+            webhook = Webhook(
                 settings.DISCORD_AUDIT_LOG_WEBHOOK,
-                content=safe_content,
-            ).post()
+                username="bancho.py",
+            )
+            webhook.add_embed(embed)
+            await webhook.post()
         except Exception as exc:
             log(f"Failed to post Discord audit log: {exc}", Ansi.LRED)
 

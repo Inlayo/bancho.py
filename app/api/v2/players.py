@@ -95,7 +95,7 @@ async def get_players(
 @router.get("/players/search")
 async def search_players(
     *,
-    query: str = Query(..., alias="q", min_length=2, max_length=32),
+    query: str = Query(..., alias="q", min_length=1, max_length=32),
     actor: Annotated[
         User | None,
         Depends(actors.get_optional_actor),

@@ -17,7 +17,7 @@ from app.repositories.users import UsersRepository
 TOKEN_EXPIRY_SECONDS = 60 * 60
 
 
-async def send_restriction_notice(email: str, username: str) -> None:
+async def send_restriction_notice(email: str, username: str, reason: str) -> None:
     await _send_email(
         email,
         "Account restriction notice",
@@ -25,6 +25,7 @@ async def send_restriction_notice(email: str, username: str) -> None:
             f"Hello {username},\n\n"
             "Your account has been restricted on "
             f"{settings.DOMAIN}.\n\n"
+            f"Reason: {reason}\n\n"
             "If you believe this restriction was made in error, please join our "
             f"Discord server at {settings.DISCORD_INVITE} and contact the staff "
             "team to appeal.\n\n"
@@ -82,7 +83,7 @@ class EmailAuthService:
     redis: aioredis.Redis
     password_cache: dict[bytes, bytes]
 
-    async def send_registration_verification(self, email: str) -> str:
+    async def send_registration_verification(self, email: str) -> None:
         token = await self._create_token("signup", email)
         link = f"{settings.WEB_BASE_URL}/register?token={quote(token)}"
         await self._send(
@@ -90,7 +91,6 @@ class EmailAuthService:
             "Verify your email address",
             f"Open this link to verify your email, or enter this token on the registration page:\n\n{token}\n\n{link}\n\nThis token expires in one hour.",
         )
-        return hashlib.sha256(token.encode()).hexdigest()[:12]
 
     async def confirm_registration_email(self, token: str) -> str | None:
         email = await self._consume_token("signup", token)

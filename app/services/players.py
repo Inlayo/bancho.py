@@ -120,7 +120,7 @@ class PlayersService:
         *,
         viewer: User | None,
     ) -> list[SearchUser]:
-        """Search players by name. Staff see hidden (restricted or
+        """Search players by name or ID. Staff see hidden (restricted or
         unverified) players; any signed-in player can find themselves."""
         viewer_is_staff = (
             viewer is not None and viewer.priv & Privileges.STAFF.value != 0

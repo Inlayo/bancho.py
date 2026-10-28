@@ -524,13 +524,13 @@ async def auto_restrict_for_pp_limit(
     player: Player,
     *,
     mode: GameMode,
-    current_pp: int,
+    score_pp: float,
     restriction_admin: Player,
 ) -> bool:
     limit = AUTO_RESTRICT_PP_LIMITS.get(mode)
     if (
         limit is None
-        or current_pp <= limit
+        or score_pp <= limit
         or player.restricted
         or player.priv & Privileges.WHITELISTED
     ):
@@ -540,7 +540,7 @@ async def auto_restrict_for_pp_limit(
         admin=restriction_admin,
         reason=(
             f"automatically restricted after exceeding the {limit}pp limit "
-            f"for {mode!r} ({current_pp}pp)"
+            f"for {mode!r} ({score_pp:g}pp)"
         ),
     )
     return True
@@ -1101,7 +1101,7 @@ class ScoreSubmissionService:
             await auto_restrict_for_pp_limit(
                 player,
                 mode=score.mode,
-                current_pp=persistence_result.current_stats.pp,
+                score_pp=score.pp,
                 restriction_admin=self.restriction_admin,
             )
 

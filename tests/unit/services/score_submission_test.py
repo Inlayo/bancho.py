@@ -153,7 +153,7 @@ async def test_auto_restricts_players_over_mode_pp_limit() -> None:
     restricted = await score_submission.auto_restrict_for_pp_limit(
         player,
         mode=GameMode.VANILLA_OSU,
-        current_pp=1501,
+        score_pp=1501,
         restriction_admin=admin,
     )
 
@@ -193,7 +193,7 @@ async def test_auto_restriction_skips_limit_boundary_whitelist_and_unused_modes(
     restricted = await score_submission.auto_restrict_for_pp_limit(
         player,
         mode=mode,
-        current_pp=pp,
+        score_pp=pp,
         restriction_admin=object(),
     )
 
@@ -1461,8 +1461,7 @@ async def test_submit_score_orchestrates_submission_side_effects(
     database = _FakeDatabaseTransactions()
     scores = _FakeScoresRepository(
         best_scores=[
-            ScorePerformanceRow(pp=100.0, acc=98.0),
-            ScorePerformanceRow(pp=50.0, acc=95.0),
+            ScorePerformanceRow(pp=3_500.0, acc=98.0),
         ],
         first_place_score=FirstPlaceScore(id=9, name="old-user"),
     )
@@ -1522,7 +1521,12 @@ async def test_submit_score_orchestrates_submission_side_effects(
     ).read_bytes() == b"x" * score_submission.MIN_REPLAY_SIZE
     assert result.score_id == 123
     assert result.previous_stats.plays == 0
+    assert result.current_stats.pp > score_submission.AUTO_RESTRICT_PP_LIMITS[
+        GameMode.RELAX_OSU
+    ]
     assert result.current_stats.rank == 7
+    assert not player.restricted
+    assert player.restriction_reasons == []
     assert [achievement.id for achievement in result.unlocked_achievements] == [1]
     assert player.updated_rank_modes == [GameMode.RELAX_OSU]
     assert published_stats == [player, player]
