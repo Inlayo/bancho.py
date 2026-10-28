@@ -1521,9 +1521,10 @@ async def test_submit_score_orchestrates_submission_side_effects(
     ).read_bytes() == b"x" * score_submission.MIN_REPLAY_SIZE
     assert result.score_id == 123
     assert result.previous_stats.plays == 0
-    assert result.current_stats.pp > score_submission.AUTO_RESTRICT_PP_LIMITS[
-        GameMode.RELAX_OSU
-    ]
+    assert (
+        result.current_stats.pp
+        > score_submission.AUTO_RESTRICT_PP_LIMITS[GameMode.RELAX_OSU]
+    )
     assert result.current_stats.rank == 7
     assert not player.restricted
     assert player.restriction_reasons == []

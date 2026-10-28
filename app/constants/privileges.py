@@ -55,11 +55,14 @@ PRIVILEGE_LABELS = (
 
 def describe_privileges(privileges: int | Privileges) -> str:
     """Return a readable list of all individual privileges in a bitmask."""
-    return ", ".join(
-        label
-        for privilege, label in PRIVILEGE_LABELS
-        if privileges & privilege.value
-    ) or "None"
+    return (
+        ", ".join(
+            label
+            for privilege, label in PRIVILEGE_LABELS
+            if privileges & privilege.value
+        )
+        or "None"
+    )
 
 
 @unique
