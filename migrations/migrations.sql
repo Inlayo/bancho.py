@@ -470,3 +470,5 @@ create index users_country_index
 # v5.2.2
 create index scores_fetch_leaderboard_generic_index
 	on scores (map_md5, status, mode);
+
+alter table users add column admin_note varchar(2048) charset utf8 null;

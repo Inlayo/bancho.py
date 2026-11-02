@@ -45,6 +45,7 @@ class UsersTable(Base):
     custom_badge_name = Column(String(16, collation="utf8"))
     custom_badge_icon = Column(String(64))
     userpage_content = Column(String(2048, collation="utf8"))
+    admin_note = Column(String(2048, collation="utf8"))
     api_key = Column(String(36))
 
     __table_args__ = (
@@ -76,6 +77,7 @@ READ_PARAMS = (
     UsersTable.custom_badge_name,
     UsersTable.custom_badge_icon,
     UsersTable.userpage_content,
+    UsersTable.admin_note,
 )
 
 
@@ -98,7 +100,8 @@ class User:
     custom_badge_name: str | None
     custom_badge_icon: str | None
     userpage_content: str | None
-    api_key: str | None
+    admin_note: str | None = None
+    api_key: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,6 +133,7 @@ class UsersRepository:
             custom_badge_name=row["custom_badge_name"],
             custom_badge_icon=row["custom_badge_icon"],
             userpage_content=row["userpage_content"],
+            admin_note=row.get("admin_note"),
             api_key=row.get("api_key"),
         )
 
@@ -383,6 +387,7 @@ class UsersRepository:
         custom_badge_name: str | None | _UnsetSentinel = UNSET,
         custom_badge_icon: str | None | _UnsetSentinel = UNSET,
         userpage_content: str | None | _UnsetSentinel = UNSET,
+        admin_note: str | None | _UnsetSentinel = UNSET,
         api_key: str | None | _UnsetSentinel = UNSET,
         pw_bcrypt: bytes | _UnsetSentinel = UNSET,
     ) -> User | None:
@@ -418,6 +423,8 @@ class UsersRepository:
             update_stmt = update_stmt.values(custom_badge_icon=custom_badge_icon)
         if not isinstance(userpage_content, _UnsetSentinel):
             update_stmt = update_stmt.values(userpage_content=userpage_content)
+        if not isinstance(admin_note, _UnsetSentinel):
+            update_stmt = update_stmt.values(admin_note=admin_note)
         if not isinstance(api_key, _UnsetSentinel):
             update_stmt = update_stmt.values(api_key=api_key)
         if not isinstance(pw_bcrypt, _UnsetSentinel):

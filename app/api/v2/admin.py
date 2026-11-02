@@ -58,6 +58,10 @@ class RestrictionRequest(BaseModel):
     reason: str = Field(min_length=3, max_length=500)
 
 
+class UserMemoRequest(BaseModel):
+    memo: str | None = Field(default=None, max_length=2000)
+
+
 class WipeScoresRequest(BaseModel):
     mode: int | None = None
 
@@ -180,7 +184,62 @@ async def get_admin_user(
             "country": user.country,
             "creation_time": user.creation_time,
             "latest_activity": user.latest_activity,
+            "admin_note": user.admin_note,
             "stats": user_stats,
+        },
+    )
+
+
+@router.put("/admin/users/{user_id}/memo")
+async def update_admin_user_memo(
+    user_id: int,
+    args: UserMemoRequest,
+    *,
+    actor: Annotated[
+        User | None,
+        Depends(actors.get_optional_actor),
+    ],
+    users: Annotated[
+        UsersRepository,
+        Depends(api_dependencies.get_users_repository),
+    ],
+) -> Success[dict[str, int | str | None]] | Failure:
+    denied = _require_admin(actor)
+    if denied is not None:
+        return denied
+    assert actor is not None
+
+    user = await users.fetch_one(id=user_id)
+    if user is None:
+        return responses.failure(
+            message="Player not found.",
+            status_code=status.HTTP_404_NOT_FOUND,
+        )
+
+    memo = args.memo.strip() if args.memo is not None else None
+    updated_user = await users.partial_update(
+        id=user_id,
+        admin_note=memo if memo else None,
+    )
+    if updated_user is None:
+        return responses.failure(
+            message="Player not found.",
+            status_code=status.HTTP_404_NOT_FOUND,
+        )
+
+    send_audit_log(
+        format_audit_event(
+            "User memo updated",
+            actor=f"{actor.name} (id: {actor.id})",
+            target=f"{user.name} (id: {user.id})",
+            note=(updated_user.admin_note or "-"),
+        ),
+    )
+
+    return responses.success(
+        {
+            "id": updated_user.id,
+            "memo": updated_user.admin_note,
         },
     )
 

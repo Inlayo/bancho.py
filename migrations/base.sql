@@ -353,6 +353,7 @@ create table users
 	custom_badge_name varchar(16) charset utf8 null,
 	custom_badge_icon varchar(64) null,
 	userpage_content varchar(2048) charset utf8 null,
+	admin_note varchar(2048) charset utf8 null,
 	api_key char(36) null,
 	constraint users_api_key_uindex
 		unique (api_key),
