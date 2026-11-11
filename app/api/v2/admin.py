@@ -234,6 +234,7 @@ async def update_admin_user_memo(
             target=f"{user.name} (id: {user.id})",
             note=(updated_user.admin_note or "-"),
         ),
+        category="admin",
     )
 
     return responses.success(
@@ -309,6 +310,7 @@ async def update_admin_user_privileges(
             previous_roles=describe_privileges(previous_privileges),
             current_roles=describe_privileges(target.priv),
         ),
+        category="admin",
     )
 
     return responses.success({"id": target.id, "priv": int(target.priv)})
@@ -506,6 +508,7 @@ async def wipe_admin_user_scores(
             modes=mode_description,
             deleted_scores=str(len(score_ids)),
         ),
+        category="admin",
     )
 
     return responses.success(
@@ -634,6 +637,7 @@ async def update_admin_map_status(
             status=str(new_status),
             maps_updated=str(len(updated_maps)),
         ),
+        category="beatmap",
     )
 
     return responses.success(

@@ -12,14 +12,15 @@ from urllib.parse import quote
 from redis import asyncio as aioredis
 
 from app import settings
+from app.discord import format_audit_event
+from app.discord import send_audit_log
 from app.repositories.users import UsersRepository
 
 TOKEN_EXPIRY_SECONDS = 60 * 60
 
 
-async def send_restriction_notice(email: str, username: str, reason: str) -> None:
-    await _send_email(
-        email,
+def build_restriction_notice(username: str, reason: str) -> tuple[str, str]:
+    return (
         "Account restriction notice",
         (
             f"Hello {username},\n\n"
@@ -32,6 +33,11 @@ async def send_restriction_notice(email: str, username: str, reason: str) -> Non
             "This is an automated message. Please do not reply to this email."
         ),
     )
+
+
+async def send_restriction_notice(email: str, username: str, reason: str) -> None:
+    subject, body = build_restriction_notice(username, reason)
+    await _send_email(email, subject, body)
 
 
 async def _send_email(recipient: str, subject: str, body: str) -> None:
@@ -63,6 +69,16 @@ async def _send_email(recipient: str, subject: str, body: str) -> None:
         await asyncio.to_thread(send_sync)
     except (OSError, smtplib.SMTPException) as exc:
         raise RuntimeError("Email delivery failed.") from exc
+
+    send_audit_log(
+        format_audit_event(
+            "Email sent",
+            recipient=recipient,
+            email_subject=subject,
+            email_body=body,
+        ),
+        category="email",
+    )
 
 
 def _token_key(kind: str, token_hash: str) -> str:

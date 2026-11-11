@@ -109,20 +109,12 @@ async def send_email_verification(
                 recipient=masked_email,
                 reason=str(exc),
             ),
+            category="email",
         )
         return responses.failure(
             "Email delivery is not configured.",
             status.HTTP_503_SERVICE_UNAVAILABLE,
         )
-    local_part, _, domain = args.email.partition("@")
-    masked_email = f"{local_part[:1]}***@{domain}"
-    send_audit_log(
-        format_audit_event(
-            "Registration verification email sent",
-            recipient=masked_email,
-            expires_in="1 hour",
-        ),
-    )
     return responses.success(None)
 
 

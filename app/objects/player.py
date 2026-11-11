@@ -489,6 +489,7 @@ class Player:
                 target=f"{self.name} (id: {self.id})",
                 reason=reason,
             ),
+            category="moderation",
         )
 
         # refresh their client state
@@ -508,22 +509,21 @@ class Player:
 
             try:
                 await send_restriction_notice(user.email, self.name, reason)
-                send_audit_log(
-                    format_audit_event(
-                        "Restriction email sent",
-                        target=f"{self.name} (id: {self.id})",
-                        reason=reason,
-                    ),
-                )
             except RuntimeError as exc:
                 log(f"Failed to send restriction email to {self}: {exc}")
+                from app.services.email_auth import build_restriction_notice
+
+                email_subject, email_body = build_restriction_notice(self.name, reason)
                 send_audit_log(
                     format_audit_event(
                         "Restriction email failed",
                         target=f"{self.name} (id: {self.id})",
                         reason=reason,
                         error=str(exc),
+                        email_subject=email_subject,
+                        email_body=email_body,
                     ),
+                    category="email",
                 )
 
         asyncio.create_task(send_restriction_email())  # type: ignore[unused-awaitable]
@@ -563,6 +563,7 @@ class Player:
                 target=f"{self.name} (id: {self.id})",
                 reason=reason,
             ),
+            category="moderation",
         )
 
         if self.is_online:
@@ -605,6 +606,7 @@ class Player:
                 duration=f"{duration:g} seconds",
                 reason=reason,
             ),
+            category="moderation",
         )
 
     async def unsilence(self, admin: Player, reason: str) -> None:
@@ -634,6 +636,7 @@ class Player:
                 target=f"{self.name} (id: {self.id})",
                 reason=reason,
             ),
+            category="moderation",
         )
 
     def join_match(self, match: Match, passwd: str) -> bool:

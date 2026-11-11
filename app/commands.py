@@ -727,6 +727,7 @@ async def _map(ctx: Context) -> str | None:
             status=str(new_status),
             maps_updated=str(len(modified_beatmap_ids)),
         ),
+        category="beatmap",
     )
     return f"{bmap.embed} updated to {new_status!s}."
 
@@ -1155,6 +1156,7 @@ async def addpriv(ctx: Context) -> str | None:
             previous_roles=describe_privileges(previous_privileges),
             current_roles=describe_privileges(target.priv),
         ),
+        category="admin",
     )
     return f"Updated {target}'s privileges."
 
@@ -1197,6 +1199,7 @@ async def rmpriv(ctx: Context) -> str | None:
             previous_roles=describe_privileges(previous_privileges),
             current_roles=describe_privileges(target.priv),
         ),
+        category="admin",
     )
     return f"Updated {target}'s privileges."
 
@@ -1235,6 +1238,7 @@ async def givedonator(ctx: Context) -> str | None:
             duration=ctx.args[1],
             role="Supporter",
         ),
+        category="admin",
     )
 
     return f"Added {ctx.args[1]} of donator status to {target}."

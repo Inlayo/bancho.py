@@ -6,6 +6,7 @@ import asyncio
 from datetime import UTC
 from datetime import datetime
 from typing import Any
+from typing import Literal
 
 from tenacity import retry
 from tenacity import stop_after_attempt
@@ -210,15 +211,30 @@ class Webhook:
         response.raise_for_status()
 
 
-def send_audit_log(embed: Embed) -> None:
-    """Post an audit event to the configured Discord webhook."""
-    if not settings.DISCORD_AUDIT_LOG_WEBHOOK:
+def send_audit_log(
+    embed: Embed,
+    *,
+    category: Literal["admin", "beatmap", "moderation", "email"] | None = None,
+) -> None:
+    """Post an audit event to its category webhook or the default webhook."""
+    if category == "admin":
+        category_webhook = settings.DISCORD_ADMIN_LOG_WEBHOOK
+    elif category == "beatmap":
+        category_webhook = settings.DISCORD_BEATMAP_LOG_WEBHOOK
+    elif category == "moderation":
+        category_webhook = settings.DISCORD_MODERATION_LOG_WEBHOOK
+    elif category == "email":
+        category_webhook = settings.DISCORD_EMAIL_LOG_WEBHOOK
+    else:
+        category_webhook = None
+    webhook_url = category_webhook or settings.DISCORD_AUDIT_LOG_WEBHOOK
+    if not webhook_url:
         return
 
     async def post_audit_log() -> None:
         try:
             webhook = Webhook(
-                settings.DISCORD_AUDIT_LOG_WEBHOOK,
+                webhook_url,
                 username="bancho.py",
             )
             webhook.add_embed(embed)
