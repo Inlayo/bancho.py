@@ -154,7 +154,8 @@ class DirectSearchService:
         mode: int,
         page_num: int,
     ) -> DirectSearchResult:
-        offset = page_num * 100
+        page_size = 50
+        offset = page_num * page_size
         special_queries = {
             "Newest": ("updated_desc", None),
             "Top+Rated": ("rating_desc", None),
@@ -188,7 +189,7 @@ class DirectSearchService:
                 return await self._use_akatsuki_statuses(osu_api_result)
 
         params: DirectSearchParams = {
-            "amount": 100,
+            "amount": page_size,
             "offset": offset,
         }
 
@@ -219,7 +220,7 @@ class DirectSearchService:
                 return await self._use_akatsuki_statuses(
                     DirectSearchResult(
                         code=DirectSearchResultCode.FOUND,
-                        result_count=101 if result_count == 100 else result_count,
+                        result_count=51 if result_count == page_size else result_count,
                         beatmap_sets=beatmap_sets,
                     ),
                 )
@@ -266,13 +267,13 @@ class DirectSearchService:
 
         fetch_akatsuki_status = self.fetch_akatsuki_status
         direct_status_by_akatsuki_status = {
-            RankedStatus.NotSubmitted: 6,
-            RankedStatus.Pending: 2,
+            RankedStatus.NotSubmitted: -2,
+            RankedStatus.Pending: 0,
             RankedStatus.UpdateAvailable: 0,
-            RankedStatus.Ranked: 0,
-            RankedStatus.Approved: 1,
+            RankedStatus.Ranked: 1,
+            RankedStatus.Approved: 2,
             RankedStatus.Qualified: 3,
-            RankedStatus.Loved: 8,
+            RankedStatus.Loved: 4,
         }
         semaphore = asyncio.Semaphore(8)
 
@@ -348,12 +349,11 @@ class DirectSearchService:
         if status_filter is not None:
             params["s"] = status_filter
 
-        first_api_page = page_num * 2
         raw_sets: list[object] = []
         has_next_page = False
-        for requested_page in range(first_api_page + 2):
+        for requested_page in range(page_num + 1):
             cached_cursors = self.osu_api_v2_cursors.get(cursor_key, {})
-            if requested_page < first_api_page and requested_page + 1 in cached_cursors:
+            if requested_page < page_num and requested_page + 1 in cached_cursors:
                 continue
             cursor = cached_cursors.get(requested_page)
             if requested_page > 0 and cursor is None:
@@ -378,7 +378,7 @@ class DirectSearchService:
                 response_sets = payload.get("beatmapsets")
                 if not isinstance(response_sets, list):
                     return None
-                if requested_page >= first_api_page:
+                if requested_page == page_num:
                     raw_sets.extend(response_sets)
                 next_cursor = payload.get("cursor_string")
                 has_next_page = False
@@ -417,13 +417,13 @@ class DirectSearchService:
         result: list[object],
     ) -> list[DirectSearchSet]:
         ranked_status_by_name = {
-            "ranked": 0,
-            "approved": 1,
-            "pending": 2,
+            "ranked": 1,
+            "approved": 2,
+            "pending": 0,
             "qualified": 3,
-            "graveyard": 5,
-            "wip": 6,
-            "loved": 8,
+            "graveyard": -2,
+            "wip": -1,
+            "loved": 4,
         }
         beatmap_sets: list[DirectSearchSet] = []
         for payload in result:

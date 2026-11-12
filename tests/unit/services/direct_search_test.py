@@ -128,6 +128,68 @@ def _map(
     )
 
 
+@pytest.mark.parametrize(
+    ("akatsuki_status", "expected_direct_status"),
+    [
+        (RankedStatus.Pending, 0),
+        (RankedStatus.Ranked, 1),
+        (RankedStatus.Approved, 2),
+        (RankedStatus.Qualified, 3),
+        (RankedStatus.Loved, 4),
+    ],
+)
+async def test_akatsuki_status_uses_osu_api_v1_direct_codes(
+    akatsuki_status: RankedStatus,
+    expected_direct_status: int,
+) -> None:
+    service = direct_search.DirectSearchService(
+        maps=_MapsRepository(),
+        osu_api_v2_client_id=None,
+        osu_api_v2_client_secret=None,
+        osu_api_v2_search_endpoint="https://osu.ppy.sh/api/v2/beatmapsets/search",
+        osu_api_v2_cursors={},
+        fetch_osu_api_v2_search=_OsuApiV2SearchFetcher(
+            _DirectSearchResponse(status_code=503, payload={}),
+        ),
+        mirror_search_endpoints=(),
+        fetch_mirror_search=_DirectSearchFetcher(
+            _DirectSearchResponse(status_code=503, payload=[]),
+        ),
+        fetch_akatsuki_status=_AkatsukiStatusFetcher(akatsuki_status),
+    )
+    result = direct_search.DirectSearchResult(
+        code=direct_search.DirectSearchResultCode.FOUND,
+        beatmap_sets=[
+            direct_search.DirectSearchSet(
+                artist="Artist",
+                title="Title",
+                creator="Creator",
+                ranked_status=0,
+                last_update="2024-01-01",
+                set_id=123,
+                has_video=0,
+                beatmaps=[
+                    direct_search.DirectSearchBeatmap(
+                        difficulty_rating=5.0,
+                        name="Hard",
+                        cs=4.0,
+                        od=8.0,
+                        ar=9.0,
+                        hp=6.0,
+                        mode=0,
+                        beatmap_id=456,
+                    ),
+                ],
+            ),
+        ],
+    )
+
+    converted = await service._use_akatsuki_statuses(result)
+
+    assert converted.beatmap_sets is not None
+    assert converted.beatmap_sets[0].ranked_status == expected_direct_status
+
+
 async def test_direct_search_normalizes_mirror_response() -> None:
     response = _DirectSearchResponse(
         status_code=200,
@@ -216,14 +278,14 @@ async def test_direct_search_normalizes_mirror_response() -> None:
     assert fetcher.calls == [
         (
             "https://mirror.test/search",
-            {"amount": 100, "offset": 200, "query": "camellia", "mode": 0, "status": 1},
+            {"amount": 50, "offset": 100, "query": "camellia", "mode": 0, "status": 1},
         ),
     ]
     assert result.beatmap_sets is not None
     assert len(result.beatmap_sets) == 1
     beatmap_set = result.beatmap_sets[0]
     assert beatmap_set.artist == "AIrtist"
-    assert beatmap_set.ranked_status == 8
+    assert beatmap_set.ranked_status == 4
     assert beatmap_set.has_video == 1
     assert [beatmap.name for beatmap in beatmap_set.beatmaps] == [
         "Normal",
@@ -303,6 +365,77 @@ async def test_direct_search_falls_back_to_next_mirror_when_empty() -> None:
     ]
 
 
+async def test_mirror_search_paginates_in_50_result_pages() -> None:
+    class _PagedMirrorFetcher:
+        def __init__(self) -> None:
+            self.calls: list[direct_search.DirectSearchParams] = []
+
+        async def __call__(
+            self,
+            url: str,
+            *,
+            params: direct_search.DirectSearchParams,
+        ) -> _DirectSearchResponse:
+            self.calls.append(params.copy())
+            offset = params["offset"]
+            return _DirectSearchResponse(
+                status_code=200,
+                payload=[
+                    {
+                        "Artist": "Artist",
+                        "Title": "Title",
+                        "Creator": "Creator",
+                        "RankedStatus": 0,
+                        "LastUpdate": "2024-01-01",
+                        "SetID": set_id,
+                        "HasVideo": 0,
+                        "ChildrenBeatmaps": [],
+                    }
+                    for set_id in range(offset, offset + 50)
+                ],
+            )
+
+    mirror_fetcher = _PagedMirrorFetcher()
+    service = direct_search.DirectSearchService(
+        maps=_MapsRepository(),
+        osu_api_v2_client_id=None,
+        osu_api_v2_client_secret=None,
+        osu_api_v2_search_endpoint="https://osu.ppy.sh/api/v2/beatmapsets/search",
+        osu_api_v2_cursors={},
+        fetch_osu_api_v2_search=_OsuApiV2SearchFetcher(
+            _DirectSearchResponse(status_code=503, payload={}),
+        ),
+        mirror_search_endpoints=("https://osu.direct/api/search",),
+        fetch_mirror_search=mirror_fetcher,
+    )
+
+    first_page = await service.search(
+        ranked_status=4,
+        query="camellia",
+        mode=-1,
+        page_num=0,
+    )
+    second_page = await service.search(
+        ranked_status=4,
+        query="camellia",
+        mode=-1,
+        page_num=1,
+    )
+
+    assert first_page.result_count == 51
+    assert first_page.beatmap_sets is not None
+    assert len(first_page.beatmap_sets) == 50
+    assert first_page.beatmap_sets[0].set_id == 0
+    assert second_page.result_count == 51
+    assert second_page.beatmap_sets is not None
+    assert len(second_page.beatmap_sets) == 50
+    assert second_page.beatmap_sets[0].set_id == 50
+    assert mirror_fetcher.calls == [
+        {"amount": 50, "offset": 0, "query": "camellia"},
+        {"amount": 50, "offset": 50, "query": "camellia"},
+    ]
+
+
 async def test_direct_search_uses_osu_api_v2_first() -> None:
     v2_response = _DirectSearchResponse(
         status_code=200,
@@ -361,7 +494,7 @@ async def test_direct_search_uses_osu_api_v2_first() -> None:
     assert result.result_count == 1
     assert result.beatmap_sets is not None
     assert result.beatmap_sets[0].set_id == 123
-    assert result.beatmap_sets[0].ranked_status == 8
+    assert result.beatmap_sets[0].ranked_status == 4
     assert result.beatmap_sets[0].has_video == 1
     assert result.beatmap_sets[0].beatmaps[0].od == 8.0
     assert v2_fetcher.calls == [
@@ -436,7 +569,7 @@ async def test_most_played_uses_osu_api_v2_plays_sort() -> None:
     assert v2_fetcher.calls[0][1] == {"sort": "plays_desc"}
     assert mirror_fetcher.calls == []
     assert result.beatmap_sets is not None
-    assert result.beatmap_sets[0].ranked_status == 0
+    assert result.beatmap_sets[0].ranked_status == 1
     assert akatsuki_fetcher.calls == [456]
 
 
@@ -539,16 +672,27 @@ async def test_direct_search_uses_osu_api_v2_cursor_for_next_page() -> None:
         mode=-1,
         page_num=1,
     )
+    third_page = await service.search(
+        ranked_status=4,
+        query="Most Played",
+        mode=-1,
+        page_num=2,
+    )
 
     assert first_page.code is direct_search.DirectSearchResultCode.FOUND
-    assert first_page.result_count == 101
+    assert first_page.result_count == 51
     assert first_page.beatmap_sets is not None
-    assert len(first_page.beatmap_sets) == 100
+    assert len(first_page.beatmap_sets) == 50
     assert second_page.code is direct_search.DirectSearchResultCode.FOUND
-    assert second_page.result_count == 1
+    assert second_page.result_count == 51
     assert second_page.beatmap_sets is not None
-    assert second_page.beatmap_sets[0].set_id == 456
-    assert second_page.beatmap_sets[0].ranked_status == 8
+    assert len(second_page.beatmap_sets) == 50
+    assert second_page.beatmap_sets[0].set_id == 50
+    assert third_page.code is direct_search.DirectSearchResultCode.FOUND
+    assert third_page.result_count == 1
+    assert third_page.beatmap_sets is not None
+    assert third_page.beatmap_sets[0].set_id == 456
+    assert third_page.beatmap_sets[0].ranked_status == 4
     assert fetcher.calls == [
         {"sort": "plays_desc"},
         {
