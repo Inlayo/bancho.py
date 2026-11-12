@@ -199,18 +199,6 @@ async def _fetch_mirror_search(
     )
 
 
-async def _fetch_old_ppy_most_played(
-    url: str,
-    *,
-    limit: int,
-) -> httpx.Response:
-    return await app.state.services.http_client.post(
-        url,
-        data={"limit": limit},
-        timeout=2.0,
-    )
-
-
 def _increment_metric(metric: str) -> None:
     if app.state.services.datadog:
         app.state.services.datadog.increment(metric)  # type: ignore[no-untyped-call]
@@ -456,10 +444,6 @@ def get_direct_search_service() -> DirectSearchService:
         osu_api_v2_search_endpoint="https://osu.ppy.sh/api/v2/beatmapsets/search",
         osu_api_v2_cursors=app.state.cache.direct_search_cursors,
         fetch_osu_api_v2_search=_fetch_osu_api_v2_search,
-        old_ppy_most_played_endpoint=(
-            "https://old.ppy.sh/pages/include/home-mostplayed.php"
-        ),
-        fetch_old_ppy_most_played=_fetch_old_ppy_most_played,
         mirror_search_endpoints=tuple(
             dict.fromkeys(
                 (

@@ -61,21 +61,6 @@ class _OsuApiV2SearchFetcher:
         return self.response
 
 
-class _OldPpyMostPlayedFetcher:
-    def __init__(self, response: _DirectSearchResponse) -> None:
-        self.response = response
-        self.calls: list[tuple[str, int]] = []
-
-    async def __call__(
-        self,
-        url: str,
-        *,
-        limit: int,
-    ) -> _DirectSearchResponse:
-        self.calls.append((url, limit))
-        return self.response
-
-
 class _MapsRepository:
     def __init__(self, maps: list[Map] | None = None) -> None:
         self.maps = maps or []
@@ -130,121 +115,6 @@ def _map(
     )
 
 
-async def test_most_played_uses_old_ppy_and_akatsuki_map_statuses() -> None:
-    old_ppy_fetcher = _OldPpyMostPlayedFetcher(
-        _DirectSearchResponse(
-            status_code=200,
-            payload={},
-            text=(
-                '<a href="/s/101">First</a>'
-                '<a href="/s/202">Second</a>'
-                '<a href="/s/101">Duplicate</a>'
-            ),
-        ),
-    )
-    maps = _MapsRepository(
-        [
-            _map(id=1, set_id=101, status=2),
-            _map(id=2, set_id=101, status=2, mode=3, version="Mania"),
-            _map(id=3, set_id=202, status=5),
-        ],
-    )
-    v2_fetcher = _OsuApiV2SearchFetcher(
-        _DirectSearchResponse(status_code=503, payload={}),
-    )
-    mirror_fetcher = _DirectSearchFetcher(
-        _DirectSearchResponse(status_code=503, payload=[]),
-    )
-    service = direct_search.DirectSearchService(
-        maps=maps,
-        osu_api_v2_client_id="123",
-        osu_api_v2_client_secret="test-secret",
-        osu_api_v2_search_endpoint="https://osu.ppy.sh/api/v2/beatmapsets/search",
-        osu_api_v2_cursors={},
-        fetch_osu_api_v2_search=v2_fetcher,
-        old_ppy_most_played_endpoint=(direct_search.OLD_PPY_MOST_PLAYED_ENDPOINT),
-        fetch_old_ppy_most_played=old_ppy_fetcher,
-        mirror_search_endpoints=("https://mirror.test/search",),
-        fetch_mirror_search=mirror_fetcher,
-    )
-
-    result = await service.search(
-        ranked_status=0,
-        query="Most Played",
-        mode=0,
-        page_num=0,
-    )
-
-    assert result.code is direct_search.DirectSearchResultCode.FOUND
-    assert result.result_count == 1
-    assert result.beatmap_sets is not None
-    assert [beatmap_set.set_id for beatmap_set in result.beatmap_sets] == [101]
-    assert result.beatmap_sets[0].ranked_status == 0
-    assert [beatmap.name for beatmap in result.beatmap_sets[0].beatmaps] == [
-        "Hard",
-    ]
-    assert old_ppy_fetcher.calls == [
-        (direct_search.OLD_PPY_MOST_PLAYED_ENDPOINT, 25),
-    ]
-    assert maps.calls == [([101, 202], MapServer.OSU)]
-    assert v2_fetcher.calls == []
-    assert mirror_fetcher.calls == []
-
-
-async def test_most_played_falls_back_when_old_ppy_is_unavailable() -> None:
-    old_ppy_fetcher = _OldPpyMostPlayedFetcher(
-        _DirectSearchResponse(status_code=403, payload={}),
-    )
-    v2_fetcher = _OsuApiV2SearchFetcher(
-        _DirectSearchResponse(
-            status_code=200,
-            payload={
-                "beatmapsets": [
-                    {
-                        "artist": "Artist",
-                        "title": "Title",
-                        "creator": "Creator",
-                        "status": "ranked",
-                        "last_updated": "2024-01-01T00:00:00Z",
-                        "id": 123,
-                        "video": False,
-                        "beatmaps": [],
-                    },
-                ],
-            },
-        ),
-    )
-    service = direct_search.DirectSearchService(
-        maps=_MapsRepository(),
-        osu_api_v2_client_id="123",
-        osu_api_v2_client_secret="test-secret",
-        osu_api_v2_search_endpoint="https://osu.ppy.sh/api/v2/beatmapsets/search",
-        osu_api_v2_cursors={},
-        fetch_osu_api_v2_search=v2_fetcher,
-        old_ppy_most_played_endpoint=(direct_search.OLD_PPY_MOST_PLAYED_ENDPOINT),
-        fetch_old_ppy_most_played=old_ppy_fetcher,
-        mirror_search_endpoints=("https://mirror.test/search",),
-        fetch_mirror_search=_DirectSearchFetcher(
-            _DirectSearchResponse(status_code=503, payload=[]),
-        ),
-    )
-
-    result = await service.search(
-        ranked_status=4,
-        query="Most+Played",
-        mode=-1,
-        page_num=0,
-    )
-
-    assert result.code is direct_search.DirectSearchResultCode.FOUND
-    assert result.beatmap_sets is not None
-    assert result.beatmap_sets[0].set_id == 123
-    assert old_ppy_fetcher.calls == [
-        (direct_search.OLD_PPY_MOST_PLAYED_ENDPOINT, 25),
-    ]
-    assert v2_fetcher.calls[0][1] == {"sort": "plays_desc"}
-
-
 async def test_direct_search_normalizes_mirror_response() -> None:
     response = _DirectSearchResponse(
         status_code=200,
@@ -294,17 +164,14 @@ async def test_direct_search_normalizes_mirror_response() -> None:
     v2_fetcher = _OsuApiV2SearchFetcher(
         _DirectSearchResponse(status_code=503, payload={}),
     )
+    maps = _MapsRepository([_map(id=1, set_id=123, status=5)])
     service = direct_search.DirectSearchService(
-        maps=_MapsRepository(),
+        maps=maps,
         osu_api_v2_client_id="123",
         osu_api_v2_client_secret="test-secret",
         osu_api_v2_search_endpoint="https://osu.ppy.sh/api/v2/beatmapsets/search",
         osu_api_v2_cursors={},
         fetch_osu_api_v2_search=v2_fetcher,
-        old_ppy_most_played_endpoint=(direct_search.OLD_PPY_MOST_PLAYED_ENDPOINT),
-        fetch_old_ppy_most_played=_OldPpyMostPlayedFetcher(
-            _DirectSearchResponse(status_code=403, payload={}),
-        ),
         mirror_search_endpoints=("https://mirror.test/search",),
         fetch_mirror_search=fetcher,
     )
@@ -341,11 +208,13 @@ async def test_direct_search_normalizes_mirror_response() -> None:
     assert len(result.beatmap_sets) == 1
     beatmap_set = result.beatmap_sets[0]
     assert beatmap_set.artist == "AIrtist"
+    assert beatmap_set.ranked_status == 8
     assert beatmap_set.has_video == 1
     assert [beatmap.name for beatmap in beatmap_set.beatmaps] == [
         "Normal",
         "HardIPipe",
     ]
+    assert maps.calls == [([123], MapServer.OSU)]
 
 
 async def test_direct_search_falls_back_to_next_mirror_when_empty() -> None:
@@ -394,10 +263,6 @@ async def test_direct_search_falls_back_to_next_mirror_when_empty() -> None:
         osu_api_v2_search_endpoint="https://osu.ppy.sh/api/v2/beatmapsets/search",
         osu_api_v2_cursors={},
         fetch_osu_api_v2_search=v2_fetcher,
-        old_ppy_most_played_endpoint=(direct_search.OLD_PPY_MOST_PLAYED_ENDPOINT),
-        fetch_old_ppy_most_played=_OldPpyMostPlayedFetcher(
-            _DirectSearchResponse(status_code=403, payload={}),
-        ),
         mirror_search_endpoints=(
             "https://env.test/search",
             "https://catboy.best/api/search",
@@ -456,17 +321,14 @@ async def test_direct_search_uses_osu_api_v2_first() -> None:
         _DirectSearchResponse(status_code=503, payload=[]),
     )
     cursors: dict[tuple[str, int, int, str], dict[int, str]] = {}
+    maps = _MapsRepository([_map(id=1, set_id=123, status=5)])
     service = direct_search.DirectSearchService(
-        maps=_MapsRepository(),
+        maps=maps,
         osu_api_v2_client_id="123",
         osu_api_v2_client_secret="test-secret",
         osu_api_v2_search_endpoint="https://osu.ppy.sh/api/v2/beatmapsets/search",
         osu_api_v2_cursors=cursors,
         fetch_osu_api_v2_search=v2_fetcher,
-        old_ppy_most_played_endpoint=(direct_search.OLD_PPY_MOST_PLAYED_ENDPOINT),
-        fetch_old_ppy_most_played=_OldPpyMostPlayedFetcher(
-            _DirectSearchResponse(status_code=403, payload={}),
-        ),
         mirror_search_endpoints=("https://mirror.test/search",),
         fetch_mirror_search=mirror_fetcher,
     )
@@ -479,10 +341,10 @@ async def test_direct_search_uses_osu_api_v2_first() -> None:
     )
 
     assert result.code is direct_search.DirectSearchResultCode.FOUND
-    assert result.result_count == 1
+    assert result.result_count == 51
     assert result.beatmap_sets is not None
     assert result.beatmap_sets[0].set_id == 123
-    assert result.beatmap_sets[0].ranked_status == 0
+    assert result.beatmap_sets[0].ranked_status == 8
     assert result.beatmap_sets[0].has_video == 1
     assert result.beatmap_sets[0].beatmaps[0].od == 8.0
     assert v2_fetcher.calls == [
@@ -494,6 +356,53 @@ async def test_direct_search_uses_osu_api_v2_first() -> None:
         ),
     ]
     assert cursors[("camellia", 4, 0, "relevance_desc")][1] == "next-page"
+    assert mirror_fetcher.calls == []
+    assert maps.calls == [([123], MapServer.OSU)]
+
+
+async def test_most_played_uses_osu_api_v2_plays_sort() -> None:
+    v2_fetcher = _OsuApiV2SearchFetcher(
+        _DirectSearchResponse(
+            status_code=200,
+            payload={
+                "beatmapsets": [
+                    {
+                        "artist": "Artist",
+                        "title": "Title",
+                        "creator": "Creator",
+                        "status": "ranked",
+                        "last_updated": "2024-01-01T00:00:00Z",
+                        "id": 123,
+                        "video": False,
+                        "beatmaps": [],
+                    },
+                ],
+            },
+        ),
+    )
+    mirror_fetcher = _DirectSearchFetcher(
+        _DirectSearchResponse(status_code=503, payload=[]),
+    )
+    service = direct_search.DirectSearchService(
+        maps=_MapsRepository(),
+        osu_api_v2_client_id="123",
+        osu_api_v2_client_secret="test-secret",
+        osu_api_v2_search_endpoint="https://osu.ppy.sh/api/v2/beatmapsets/search",
+        osu_api_v2_cursors={},
+        fetch_osu_api_v2_search=v2_fetcher,
+        mirror_search_endpoints=("https://mirror.test/search",),
+        fetch_mirror_search=mirror_fetcher,
+    )
+
+    result = await service.search(
+        ranked_status=4,
+        query="Most Played",
+        mode=-1,
+        page_num=0,
+    )
+
+    assert result.code is direct_search.DirectSearchResultCode.FOUND
+    assert v2_fetcher.calls[0][1] == {"sort": "plays_desc"}
     assert mirror_fetcher.calls == []
 
 
@@ -515,7 +424,19 @@ async def test_direct_search_uses_osu_api_v2_cursor_for_next_page() -> None:
                 return _DirectSearchResponse(
                     status_code=200,
                     payload={
-                        "beatmapsets": [],
+                        "beatmapsets": [
+                            {
+                                "artist": "Artist",
+                                "title": "Title",
+                                "creator": "Creator",
+                                "status": "loved",
+                                "last_updated": "2024-01-01T00:00:00Z",
+                                "id": set_id,
+                                "video": False,
+                                "beatmaps": [],
+                            }
+                            for set_id in range(50)
+                        ],
                         "cursor_string": "next-page",
                     },
                 )
@@ -545,32 +466,38 @@ async def test_direct_search_uses_osu_api_v2_cursor_for_next_page() -> None:
         osu_api_v2_search_endpoint="https://osu.ppy.sh/api/v2/beatmapsets/search",
         osu_api_v2_cursors={},
         fetch_osu_api_v2_search=fetcher,
-        old_ppy_most_played_endpoint=(direct_search.OLD_PPY_MOST_PLAYED_ENDPOINT),
-        fetch_old_ppy_most_played=_OldPpyMostPlayedFetcher(
-            _DirectSearchResponse(status_code=403, payload={}),
-        ),
         mirror_search_endpoints=("https://mirror.test/search",),
         fetch_mirror_search=_DirectSearchFetcher(
             _DirectSearchResponse(status_code=503, payload=[]),
         ),
     )
 
-    result = await service.search(
+    first_page = await service.search(
         ranked_status=4,
-        query="camellia",
+        query="Most Played",
+        mode=-1,
+        page_num=0,
+    )
+    second_page = await service.search(
+        ranked_status=4,
+        query="Most Played",
         mode=-1,
         page_num=1,
     )
 
-    assert result.code is direct_search.DirectSearchResultCode.FOUND
-    assert result.beatmap_sets is not None
-    assert result.beatmap_sets[0].set_id == 456
-    assert result.beatmap_sets[0].ranked_status == 8
+    assert first_page.code is direct_search.DirectSearchResultCode.FOUND
+    assert first_page.result_count == 51
+    assert first_page.beatmap_sets is not None
+    assert len(first_page.beatmap_sets) == 50
+    assert second_page.code is direct_search.DirectSearchResultCode.FOUND
+    assert second_page.result_count == 1
+    assert second_page.beatmap_sets is not None
+    assert second_page.beatmap_sets[0].set_id == 456
+    assert second_page.beatmap_sets[0].ranked_status == 8
     assert fetcher.calls == [
-        {"q": "camellia", "sort": "relevance_desc"},
+        {"sort": "plays_desc"},
         {
-            "q": "camellia",
-            "sort": "relevance_desc",
+            "sort": "plays_desc",
             "cursor_string": "next-page",
         },
     ]
@@ -647,36 +574,3 @@ async def test_osu_api_v2_search_fetches_and_caches_oauth_token(
         ]
         * 2
     )
-
-
-async def test_old_ppy_most_played_fetches_with_limit_form_data(
-    monkeypatch,
-) -> None:
-    response = _DirectSearchResponse(status_code=200, payload={}, text="<html>")
-
-    class _HTTPClient:
-        def __init__(self) -> None:
-            self.post_calls: list[tuple[str, dict[str, int], float]] = []
-
-        async def post(
-            self,
-            url: str,
-            *,
-            data: dict[str, int],
-            timeout: float,
-        ) -> _DirectSearchResponse:
-            self.post_calls.append((url, data, timeout))
-            return response
-
-    client = _HTTPClient()
-    monkeypatch.setattr(app.state.services, "http_client", client)
-
-    result = await api_dependencies._fetch_old_ppy_most_played(
-        direct_search.OLD_PPY_MOST_PLAYED_ENDPOINT,
-        limit=25,
-    )
-
-    assert result is response
-    assert client.post_calls == [
-        (direct_search.OLD_PPY_MOST_PLAYED_ENDPOINT, {"limit": 25}, 2.0),
-    ]

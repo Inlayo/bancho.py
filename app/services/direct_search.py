@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import re
 from collections.abc import Awaitable
 from collections.abc import MutableMapping
 from collections.abc import Sequence
 from dataclasses import dataclass
+from dataclasses import replace
 from enum import StrEnum
-from html.parser import HTMLParser
 from typing import NotRequired
 from typing import Protocol
 from typing import TypedDict
@@ -16,9 +15,6 @@ import httpx
 from app.constants.beatmap_statuses import RankedStatus
 from app.repositories.maps import Map
 from app.repositories.maps import MapServer
-
-OLD_PPY_MOST_PLAYED_LIMIT = 100
-OLD_PPY_MOST_PLAYED_ENDPOINT = "https://old.ppy.sh/pages/include/home-mostplayed.php"
 
 
 class DirectSearchParams(TypedDict):
@@ -71,23 +67,6 @@ class DirectSearchGetter(Protocol):
         *,
         params: DirectSearchParams,
     ) -> Awaitable[DirectSearchHTTPResponse]: ...
-
-
-class OldPpyMostPlayedHTTPResponse(Protocol):
-    @property
-    def status_code(self) -> int: ...
-
-    @property
-    def text(self) -> str: ...
-
-
-class OldPpyMostPlayedGetter(Protocol):
-    def __call__(
-        self,
-        url: str,
-        *,
-        limit: int,
-    ) -> Awaitable[OldPpyMostPlayedHTTPResponse]: ...
 
 
 class DirectSearchMapsRepository(Protocol):
@@ -145,32 +124,6 @@ class DirectSearchResult:
     beatmap_sets: list[DirectSearchSet] | None = None
 
 
-class _MostPlayedSetIdParser(HTMLParser):
-    def __init__(self) -> None:
-        super().__init__()
-        self.set_ids: list[int] = []
-
-    def handle_starttag(
-        self,
-        tag: str,
-        attrs: list[tuple[str, str | None]],
-    ) -> None:
-        if tag != "a":
-            return
-
-        href = dict(attrs).get("href")
-        if href is None:
-            return
-
-        match = re.fullmatch(r"/s/(\d+)", href)
-        if match is None:
-            return
-
-        set_id = int(match.group(1))
-        if set_id not in self.set_ids:
-            self.set_ids.append(set_id)
-
-
 @dataclass(frozen=True)
 class DirectSearchService:
     maps: DirectSearchMapsRepository
@@ -182,8 +135,6 @@ class DirectSearchService:
         dict[int, str],
     ]
     fetch_osu_api_v2_search: OsuApiV2SearchGetter
-    old_ppy_most_played_endpoint: str
-    fetch_old_ppy_most_played: OldPpyMostPlayedGetter
     mirror_search_endpoints: Sequence[str]
     fetch_mirror_search: DirectSearchGetter
 
@@ -217,15 +168,6 @@ class DirectSearchService:
             7: 1,
             8: 4,
         }.get(ranked_status)
-        if query in {"Most+Played", "Most Played"}:
-            old_ppy_result = await self._search_old_ppy_most_played(
-                ranked_status=search_status,
-                mode=mode,
-                page_num=page_num,
-            )
-            if old_ppy_result is not None and old_ppy_result.beatmap_sets:
-                return old_ppy_result
-
         if self.osu_api_v2_client_id and self.osu_api_v2_client_secret:
             osu_api_result = await self._search_osu_api_v2(
                 ranked_status=ranked_status,
@@ -235,7 +177,7 @@ class DirectSearchService:
                 page_num=page_num,
             )
             if osu_api_result is not None and osu_api_result.beatmap_sets:
-                return osu_api_result
+                return await self._use_akatsuki_statuses(osu_api_result)
 
         params: DirectSearchParams = {
             "amount": 100,
@@ -266,10 +208,12 @@ class DirectSearchService:
 
             if beatmap_sets:
                 result_count = len(payload)
-                return DirectSearchResult(
-                    code=DirectSearchResultCode.FOUND,
-                    result_count=101 if result_count == 100 else result_count,
-                    beatmap_sets=beatmap_sets,
+                return await self._use_akatsuki_statuses(
+                    DirectSearchResult(
+                        code=DirectSearchResultCode.FOUND,
+                        result_count=101 if result_count == 100 else result_count,
+                        beatmap_sets=beatmap_sets,
+                    ),
                 )
             succeeded_with_empty_results = True
 
@@ -280,114 +224,47 @@ class DirectSearchService:
             )
         return DirectSearchResult(code=DirectSearchResultCode.MIRROR_ERROR)
 
-    async def _search_old_ppy_most_played(
+    async def _use_akatsuki_statuses(
         self,
-        *,
-        ranked_status: int | None,
-        mode: int,
-        page_num: int,
-    ) -> DirectSearchResult | None:
-        if page_num != 0:
-            return None
-
-        try:
-            response = await self.fetch_old_ppy_most_played(
-                self.old_ppy_most_played_endpoint,
-                limit=OLD_PPY_MOST_PLAYED_LIMIT,
-            )
-        except httpx.HTTPError:
-            return None
-        if response.status_code != 200:
-            return None
-
-        parser = _MostPlayedSetIdParser()
-        parser.feed(response.text)
-        if not parser.set_ids:
-            return None
-
+        result: DirectSearchResult,
+    ) -> DirectSearchResult:
+        assert result.beatmap_sets is not None
         maps = await self.maps.fetch_many_by_set_ids(
-            parser.set_ids,
+            [beatmap_set.set_id for beatmap_set in result.beatmap_sets],
             server=MapServer.OSU,
         )
-        maps_by_set_id: dict[int, list[Map]] = {}
-        for beatmap in maps:
-            maps_by_set_id.setdefault(beatmap.set_id, []).append(beatmap)
-
-        beatmap_sets: list[DirectSearchSet] = []
-        direct_status_by_api_status = {
-            0: 2,
-            1: 0,
-            2: 1,
-            3: 3,
-            4: 8,
+        status_by_set_id: dict[int, int] = {}
+        direct_status_by_akatsuki_status = {
+            RankedStatus.NotSubmitted: 6,
+            RankedStatus.Pending: 2,
+            RankedStatus.UpdateAvailable: 0,
+            RankedStatus.Ranked: 0,
+            RankedStatus.Approved: 1,
+            RankedStatus.Qualified: 3,
+            RankedStatus.Loved: 8,
         }
-
-        for set_id in parser.set_ids:
-            set_maps = maps_by_set_id.get(set_id)
-            if not set_maps:
-                continue
-
-            if mode != -1:
-                set_maps = [beatmap for beatmap in set_maps if beatmap.mode == mode]
-            if not set_maps:
-                continue
-
+        for beatmap in maps:
             try:
-                api_status = RankedStatus(set_maps[0].status).osu_api
-            except (KeyError, ValueError):
+                ranked_status = RankedStatus(beatmap.status)
+            except ValueError:
                 continue
-            direct_status = direct_status_by_api_status[api_status]
-            if ranked_status is not None and api_status != ranked_status:
-                continue
-
-            matching_maps: list[Map] = []
-            for beatmap in set_maps:
-                try:
-                    beatmap_api_status = RankedStatus(beatmap.status).osu_api
-                except (KeyError, ValueError):
-                    continue
-                if beatmap_api_status == api_status:
-                    matching_maps.append(beatmap)
-            if not matching_maps:
-                continue
-
-            first_map = matching_maps[0]
-            beatmap_sets.append(
-                DirectSearchSet(
-                    artist=self._replace_osudirect_delimiter(first_map.artist),
-                    title=self._replace_osudirect_delimiter(first_map.title),
-                    creator=first_map.creator,
-                    ranked_status=direct_status,
-                    last_update=first_map.last_update.isoformat(sep=" "),
-                    set_id=set_id,
-                    has_video=0,
-                    beatmaps=[
-                        DirectSearchBeatmap(
-                            difficulty_rating=beatmap.diff,
-                            name=self._replace_osudirect_delimiter(
-                                beatmap.version,
-                            ),
-                            cs=beatmap.cs,
-                            od=beatmap.od,
-                            ar=beatmap.ar,
-                            hp=beatmap.hp,
-                            mode=beatmap.mode,
-                        )
-                        for beatmap in sorted(
-                            matching_maps,
-                            key=lambda map: map.diff,
-                        )
-                    ],
-                ),
+            status_by_set_id.setdefault(
+                beatmap.set_id,
+                direct_status_by_akatsuki_status[ranked_status],
             )
 
-        if not beatmap_sets:
-            return None
-
-        return DirectSearchResult(
-            code=DirectSearchResultCode.FOUND,
-            result_count=len(beatmap_sets),
-            beatmap_sets=beatmap_sets,
+        return replace(
+            result,
+            beatmap_sets=[
+                replace(
+                    beatmap_set,
+                    ranked_status=status_by_set_id.get(
+                        beatmap_set.set_id,
+                        beatmap_set.ranked_status,
+                    ),
+                )
+                for beatmap_set in result.beatmap_sets
+            ],
         )
 
     async def _search_osu_api_v2(
@@ -428,6 +305,7 @@ class DirectSearchService:
             params["s"] = status_filter
 
         raw_sets: list[object] = []
+        has_next_page = False
         for requested_page in range(page_num + 1):
             cached_cursors = self.osu_api_v2_cursors.get(cursor_key, {})
             if requested_page < page_num and requested_page + 1 in cached_cursors:
@@ -457,7 +335,9 @@ class DirectSearchService:
                     return None
                 raw_sets = response_sets
                 next_cursor = payload.get("cursor_string")
+                has_next_page = False
                 if isinstance(next_cursor, str) and next_cursor:
+                    has_next_page = True
                     if (
                         cursor_key not in self.osu_api_v2_cursors
                         and len(self.osu_api_v2_cursors) >= 256
@@ -482,7 +362,7 @@ class DirectSearchService:
 
         return DirectSearchResult(
             code=DirectSearchResultCode.FOUND,
-            result_count=101 if len(raw_sets) == 100 else len(raw_sets),
+            result_count=51 if has_next_page else len(raw_sets),
             beatmap_sets=beatmap_sets,
         )
 
