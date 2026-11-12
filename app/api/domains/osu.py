@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Sequence
 from pathlib import Path as SystemPath
 from typing import Annotated
@@ -9,6 +10,7 @@ from typing import Any
 from typing import Literal
 from urllib.parse import unquote
 
+import httpx
 from fastapi import status
 from fastapi.datastructures import FormData
 from fastapi.datastructures import UploadFile
@@ -1146,17 +1148,57 @@ async def get_osz(
         map_set_id = map_set_id[:-1]
 
     try:
-        beatmap_set = await BeatmapSet.from_bsid(int(map_set_id))
+        beatmap_set = await asyncio.wait_for(
+            BeatmapSet.from_bsid(int(map_set_id)),
+            timeout=1.0,
+        )
         if beatmap_set is not None:
-            await ensure_osu_files_for_beatmap_set(beatmap_set)
+            await asyncio.wait_for(
+                ensure_osu_files_for_beatmap_set(beatmap_set),
+                timeout=1.0,
+            )
+    except TimeoutError:
+        log(f"Timed out while indexing beatmap set {map_set_id}.", Ansi.LYELLOW)
     except Exception as exc:
         log(f"Failed to index beatmap set {map_set_id}: {exc}", Ansi.LRED)
 
     query_str = f"{map_set_id}?n={int(not no_video)}"
+    endpoints = dict.fromkeys(
+        (
+            app.settings.MIRROR_DOWNLOAD_ENDPOINT,
+            "https://catboy.best/d",
+            "https://osu.direct/d",
+        ),
+    )
+    for endpoint in endpoints:
+        url = f"{endpoint.rstrip('/')}/{query_str}"
+        try:
+            async with app.state.services.http_client.stream(
+                "GET",
+                url,
+                headers={"Range": "bytes=0-0"},
+                follow_redirects=True,
+                timeout=2.0,
+            ) as response:
+                if response.status_code in (
+                    status.HTTP_200_OK,
+                    status.HTTP_206_PARTIAL_CONTENT,
+                ):
+                    return RedirectResponse(
+                        url=str(response.url),
+                        status_code=status.HTTP_302_FOUND,
+                    )
+        except httpx.RequestError as exc:
+            log(f"Beatmap mirror {endpoint} is unavailable: {exc}", Ansi.LYELLOW)
 
-    return RedirectResponse(
-        url=f"{app.settings.MIRROR_DOWNLOAD_ENDPOINT}/{query_str}",
-        status_code=status.HTTP_301_MOVED_PERMANENTLY,
+        log(
+            f"Beatmap mirror {endpoint} did not provide set {map_set_id}.",
+            Ansi.LYELLOW,
+        )
+
+    return Response(
+        b"Failed to retrieve the beatmap from all configured mirrors.",
+        status_code=status.HTTP_502_BAD_GATEWAY,
     )
 
 

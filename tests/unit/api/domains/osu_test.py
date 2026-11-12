@@ -352,3 +352,29 @@ def test_parse_beatmap_info_request_body_accepts_osu_stable_json_body() -> None:
 )
 def test_parse_beatmap_info_request_body_rejects_invalid_body(raw_body: bytes) -> None:
     assert osu.parse_beatmap_info_request_body(raw_body) is None
+
+
+async def test_beatmap_download_falls_back_to_next_mirror(
+    monkeypatch: pytest.MonkeyPatch,
+    respx_mock,
+) -> None:
+    import httpx
+    import respx
+
+    from app.objects.beatmap import BeatmapSet
+
+    async def skip_indexing(cls: type[BeatmapSet], set_id: int) -> None:
+        return None
+
+    monkeypatch.setattr(BeatmapSet, "from_bsid", classmethod(skip_indexing))
+    respx_mock.get("https://catboy.best/d/123?n=0").mock(
+        return_value=httpx.Response(status_code=503),
+    )
+    respx_mock.get("https://osu.direct/d/123?n=0").mock(
+        return_value=httpx.Response(status_code=206),
+    )
+
+    response = await osu.get_osz("123n")
+
+    assert response.status_code == 302
+    assert response.headers["location"] == "https://osu.direct/d/123?n=0"

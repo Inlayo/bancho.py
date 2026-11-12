@@ -52,6 +52,7 @@ from app.services.clans import ClansService
 from app.services.client_integrity import ClientIntegrityService
 from app.services.comments import CommentsService
 from app.services.direct_search import DirectSearchParams
+from app.services.direct_search import OsuApiV2SearchParams
 from app.services.direct_search import DirectSearchService
 from app.services.email_auth import EmailAuthService
 from app.services.favourites import FavouritesService
@@ -93,7 +94,35 @@ async def _fetch_mirror_search(
     if "status" in params:
         http_params["status"] = params["status"]
 
-    return await app.state.services.http_client.get(url, params=http_params)
+    return await app.state.services.http_client.get(
+        url,
+        params=http_params,
+        timeout=2.0,
+    )
+
+
+async def _fetch_osu_api_v2_search(
+    url: str,
+    *,
+    params: OsuApiV2SearchParams,
+    token: str,
+) -> httpx.Response:
+    http_params: dict[str, str | int] = {"sort": params["sort"]}
+    if "q" in params:
+        http_params["q"] = params["q"]
+    if "m" in params:
+        http_params["m"] = params["m"]
+    if "s" in params:
+        http_params["s"] = params["s"]
+    if "cursor_string" in params:
+        http_params["cursor_string"] = params["cursor_string"]
+
+    return await app.state.services.http_client.get(
+        url,
+        params=http_params,
+        headers={"Authorization": f"Bearer {token}"},
+        timeout=2.0,
+    )
 
 
 def _increment_metric(metric: str) -> None:
@@ -335,7 +364,19 @@ def get_client_integrity_service() -> ClientIntegrityService:
 
 def get_direct_search_service() -> DirectSearchService:
     return DirectSearchService(
-        mirror_search_endpoint=settings.MIRROR_SEARCH_ENDPOINT,
+        osu_api_v2_token=settings.OSU_API_V2_TOKEN,
+        osu_api_v2_search_endpoint="https://osu.ppy.sh/api/v2/beatmapsets/search",
+        osu_api_v2_cursors=app.state.cache.direct_search_cursors,
+        fetch_osu_api_v2_search=_fetch_osu_api_v2_search,
+        mirror_search_endpoints=tuple(
+            dict.fromkeys(
+                (
+                    settings.MIRROR_SEARCH_ENDPOINT,
+                    "https://catboy.best/api/search",
+                    "https://osu.direct/api/search",
+                ),
+            ),
+        ),
         fetch_mirror_search=_fetch_mirror_search,
     )
 

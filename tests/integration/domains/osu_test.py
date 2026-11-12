@@ -17,6 +17,23 @@ from app.repositories.users import UsersRepository
 from testing.sample_data import sample_beatmap_data
 
 
+async def test_beatmap_download_falls_back_to_next_mirror(
+    http_client: AsyncClient,
+    respx_mock: respx.MockRouter,
+) -> None:
+    respx_mock.get("https://catboy.best/d/123?n=0").mock(
+        return_value=httpx.Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE),
+    )
+    respx_mock.get("https://osu.direct/d/123?n=0").mock(
+        return_value=httpx.Response(status_code=status.HTTP_206_PARTIAL_CONTENT),
+    )
+
+    response = await http_client.get("/d/123n", follow_redirects=False)
+
+    assert response.status_code == status.HTTP_302_FOUND
+    assert response.headers["location"] == "https://osu.direct/d/123?n=0"
+
+
 async def test_score_submission(
     http_client: AsyncClient,
     respx_mock: respx.MockRouter,
