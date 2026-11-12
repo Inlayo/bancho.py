@@ -365,6 +365,22 @@ class MapsRepository:
         maps = await self._database.fetch_all(select_stmt)
         return [self._deserialize_map(map) for map in maps]
 
+    async def fetch_many_by_set_ids(
+        self,
+        set_ids: list[int],
+        *,
+        server: MapServer = MapServer.OSU,
+    ) -> list[Map]:
+        if not set_ids:
+            return []
+
+        select_stmt = select(*READ_PARAMS).where(
+            MapsTable.server == server,
+            MapsTable.set_id.in_(set_ids),
+        )
+        maps = await self._database.fetch_all(select_stmt)
+        return [self._deserialize_map(map) for map in maps]
+
     async def partial_update(
         self,
         id: int,
