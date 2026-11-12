@@ -278,7 +278,7 @@ async def test_direct_search_normalizes_mirror_response() -> None:
     assert fetcher.calls == [
         (
             "https://mirror.test/search",
-            {"amount": 50, "offset": 100, "query": "camellia", "mode": 0, "status": 1},
+            {"amount": 100, "offset": 200, "query": "camellia", "mode": 0, "status": 1},
         ),
     ]
     assert result.beatmap_sets is not None
@@ -391,7 +391,7 @@ async def test_mirror_search_paginates_in_50_result_pages() -> None:
                         "HasVideo": 0,
                         "ChildrenBeatmaps": [],
                     }
-                    for set_id in range(offset, offset + 50)
+                    for set_id in range(offset, offset + 100)
                 ],
             )
 
@@ -422,17 +422,17 @@ async def test_mirror_search_paginates_in_50_result_pages() -> None:
         page_num=1,
     )
 
-    assert first_page.result_count == 51
+    assert first_page.result_count == 101
     assert first_page.beatmap_sets is not None
-    assert len(first_page.beatmap_sets) == 50
+    assert len(first_page.beatmap_sets) == 100
     assert first_page.beatmap_sets[0].set_id == 0
-    assert second_page.result_count == 51
+    assert second_page.result_count == 101
     assert second_page.beatmap_sets is not None
-    assert len(second_page.beatmap_sets) == 50
-    assert second_page.beatmap_sets[0].set_id == 50
+    assert len(second_page.beatmap_sets) == 100
+    assert second_page.beatmap_sets[0].set_id == 100
     assert mirror_fetcher.calls == [
-        {"amount": 50, "offset": 0, "query": "camellia"},
-        {"amount": 50, "offset": 50, "query": "camellia"},
+        {"amount": 100, "offset": 0, "query": "camellia"},
+        {"amount": 100, "offset": 100, "query": "camellia"},
     ]
 
 
@@ -628,6 +628,46 @@ async def test_direct_search_uses_osu_api_v2_cursor_for_next_page() -> None:
                         "cursor_string": "page-2",
                     },
                 )
+            if cursor == "page-2":
+                return _DirectSearchResponse(
+                    status_code=200,
+                    payload={
+                        "beatmapsets": [
+                            {
+                                "artist": "Artist",
+                                "title": "Title",
+                                "creator": "Creator",
+                                "status": "loved",
+                                "last_updated": "2024-01-01T00:00:00Z",
+                                "id": set_id,
+                                "video": False,
+                                "beatmaps": [],
+                            }
+                            for set_id in range(100, 150)
+                        ],
+                        "cursor_string": "page-3",
+                    },
+                )
+            if cursor == "page-3":
+                return _DirectSearchResponse(
+                    status_code=200,
+                    payload={
+                        "beatmapsets": [
+                            {
+                                "artist": "Artist",
+                                "title": "Title",
+                                "creator": "Creator",
+                                "status": "loved",
+                                "last_updated": "2024-01-01T00:00:00Z",
+                                "id": set_id,
+                                "video": False,
+                                "beatmaps": [],
+                            }
+                            for set_id in range(150, 200)
+                        ],
+                        "cursor_string": "page-4",
+                    },
+                )
             return _DirectSearchResponse(
                 status_code=200,
                 payload={
@@ -680,14 +720,14 @@ async def test_direct_search_uses_osu_api_v2_cursor_for_next_page() -> None:
     )
 
     assert first_page.code is direct_search.DirectSearchResultCode.FOUND
-    assert first_page.result_count == 51
+    assert first_page.result_count == 101
     assert first_page.beatmap_sets is not None
-    assert len(first_page.beatmap_sets) == 50
+    assert len(first_page.beatmap_sets) == 100
     assert second_page.code is direct_search.DirectSearchResultCode.FOUND
-    assert second_page.result_count == 51
+    assert second_page.result_count == 101
     assert second_page.beatmap_sets is not None
-    assert len(second_page.beatmap_sets) == 50
-    assert second_page.beatmap_sets[0].set_id == 50
+    assert len(second_page.beatmap_sets) == 100
+    assert second_page.beatmap_sets[0].set_id == 100
     assert third_page.code is direct_search.DirectSearchResultCode.FOUND
     assert third_page.result_count == 1
     assert third_page.beatmap_sets is not None
@@ -702,6 +742,14 @@ async def test_direct_search_uses_osu_api_v2_cursor_for_next_page() -> None:
         {
             "sort": "plays_desc",
             "cursor_string": "page-2",
+        },
+        {
+            "sort": "plays_desc",
+            "cursor_string": "page-3",
+        },
+        {
+            "sort": "plays_desc",
+            "cursor_string": "page-4",
         },
     ]
 

@@ -154,7 +154,7 @@ class DirectSearchService:
         mode: int,
         page_num: int,
     ) -> DirectSearchResult:
-        page_size = 50
+        page_size = 100
         offset = page_num * page_size
         special_queries = {
             "Newest": ("updated_desc", None),
@@ -220,7 +220,7 @@ class DirectSearchService:
                 return await self._use_akatsuki_statuses(
                     DirectSearchResult(
                         code=DirectSearchResultCode.FOUND,
-                        result_count=51 if result_count == page_size else result_count,
+                        result_count=101 if result_count == page_size else result_count,
                         beatmap_sets=beatmap_sets,
                     ),
                 )
@@ -349,11 +349,12 @@ class DirectSearchService:
         if status_filter is not None:
             params["s"] = status_filter
 
+        first_api_page = page_num * 2
         raw_sets: list[object] = []
         has_next_page = False
-        for requested_page in range(page_num + 1):
+        for requested_page in range(first_api_page + 2):
             cached_cursors = self.osu_api_v2_cursors.get(cursor_key, {})
-            if requested_page < page_num and requested_page + 1 in cached_cursors:
+            if requested_page < first_api_page and requested_page + 1 in cached_cursors:
                 continue
             cursor = cached_cursors.get(requested_page)
             if requested_page > 0 and cursor is None:
@@ -378,7 +379,7 @@ class DirectSearchService:
                 response_sets = payload.get("beatmapsets")
                 if not isinstance(response_sets, list):
                     return None
-                if requested_page == page_num:
+                if requested_page >= first_api_page:
                     raw_sets.extend(response_sets)
                 next_cursor = payload.get("cursor_string")
                 has_next_page = False
