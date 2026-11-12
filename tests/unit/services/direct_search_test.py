@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import app.api.dependencies as api_dependencies
-import app.state.services
 import app.services.direct_search as direct_search
+import app.state.services
 
 
 class _DirectSearchResponse:

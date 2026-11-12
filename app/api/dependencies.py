@@ -54,8 +54,8 @@ from app.services.clans import ClansService
 from app.services.client_integrity import ClientIntegrityService
 from app.services.comments import CommentsService
 from app.services.direct_search import DirectSearchParams
-from app.services.direct_search import OsuApiV2SearchParams
 from app.services.direct_search import DirectSearchService
+from app.services.direct_search import OsuApiV2SearchParams
 from app.services.email_auth import EmailAuthService
 from app.services.favourites import FavouritesService
 from app.services.mail import MailReadService
