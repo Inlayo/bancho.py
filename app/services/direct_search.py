@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Awaitable
 from collections.abc import MutableMapping
 from collections.abc import Sequence
@@ -41,6 +42,7 @@ class DirectSearchBeatmapPayload(TypedDict):
     AR: float
     HP: float
     Mode: int
+    BeatmapID: NotRequired[int]
 
 
 class DirectSearchSetPayload(TypedDict):
@@ -67,6 +69,10 @@ class DirectSearchGetter(Protocol):
         *,
         params: DirectSearchParams,
     ) -> Awaitable[DirectSearchHTTPResponse]: ...
+
+
+class AkatsukiStatusGetter(Protocol):
+    def __call__(self, beatmap_id: int) -> Awaitable[RankedStatus | None]: ...
 
 
 class DirectSearchMapsRepository(Protocol):
@@ -98,6 +104,7 @@ class DirectSearchBeatmap:
     ar: float
     hp: float
     mode: int
+    beatmap_id: int | None = None
 
 
 @dataclass(frozen=True)
@@ -137,6 +144,7 @@ class DirectSearchService:
     fetch_osu_api_v2_search: OsuApiV2SearchGetter
     mirror_search_endpoints: Sequence[str]
     fetch_mirror_search: DirectSearchGetter
+    fetch_akatsuki_status: AkatsukiStatusGetter | None = None
 
     async def search(
         self,
@@ -229,11 +237,34 @@ class DirectSearchService:
         result: DirectSearchResult,
     ) -> DirectSearchResult:
         assert result.beatmap_sets is not None
+        beatmap_ids_by_set_id = {
+            beatmap_set.set_id: next(
+                (
+                    beatmap.beatmap_id
+                    for beatmap in beatmap_set.beatmaps
+                    if beatmap.beatmap_id is not None
+                ),
+                None,
+            )
+            for beatmap_set in result.beatmap_sets
+        }
+        sets_without_beatmap_ids = [
+            set_id
+            for set_id, beatmap_id in beatmap_ids_by_set_id.items()
+            if beatmap_id is None
+        ]
         maps = await self.maps.fetch_many_by_set_ids(
-            [beatmap_set.set_id for beatmap_set in result.beatmap_sets],
+            sets_without_beatmap_ids,
             server=MapServer.OSU,
         )
-        status_by_set_id: dict[int, int] = {}
+        for beatmap in maps:
+            if beatmap_ids_by_set_id[beatmap.set_id] is None:
+                beatmap_ids_by_set_id[beatmap.set_id] = beatmap.id
+
+        if self.fetch_akatsuki_status is None:
+            return result
+
+        fetch_akatsuki_status = self.fetch_akatsuki_status
         direct_status_by_akatsuki_status = {
             RankedStatus.NotSubmitted: 6,
             RankedStatus.Pending: 2,
@@ -243,15 +274,28 @@ class DirectSearchService:
             RankedStatus.Qualified: 3,
             RankedStatus.Loved: 8,
         }
-        for beatmap in maps:
-            try:
-                ranked_status = RankedStatus(beatmap.status)
-            except ValueError:
-                continue
-            status_by_set_id.setdefault(
-                beatmap.set_id,
-                direct_status_by_akatsuki_status[ranked_status],
-            )
+        semaphore = asyncio.Semaphore(8)
+
+        async def fetch_status(set_id: int, beatmap_id: int) -> tuple[int, int] | None:
+            async with semaphore:
+                ranked_status = await fetch_akatsuki_status(beatmap_id)
+            if ranked_status is None:
+                return None
+            return set_id, direct_status_by_akatsuki_status[ranked_status]
+
+        status_results = await asyncio.gather(
+            *(
+                fetch_status(set_id, beatmap_id)
+                for set_id, beatmap_id in beatmap_ids_by_set_id.items()
+                if beatmap_id is not None
+            ),
+        )
+        status_by_set_id = {
+            set_id: status
+            for status_result in status_results
+            if status_result is not None
+            for set_id, status in (status_result,)
+        }
 
         return replace(
             result,
@@ -304,15 +348,16 @@ class DirectSearchService:
         if status_filter is not None:
             params["s"] = status_filter
 
+        first_api_page = page_num * 2
         raw_sets: list[object] = []
         has_next_page = False
-        for requested_page in range(page_num + 1):
+        for requested_page in range(first_api_page + 2):
             cached_cursors = self.osu_api_v2_cursors.get(cursor_key, {})
-            if requested_page < page_num and requested_page + 1 in cached_cursors:
+            if requested_page < first_api_page and requested_page + 1 in cached_cursors:
                 continue
             cursor = cached_cursors.get(requested_page)
             if requested_page > 0 and cursor is None:
-                return None
+                break
             if cursor is not None:
                 params["cursor_string"] = cursor
             else:
@@ -333,7 +378,8 @@ class DirectSearchService:
                 response_sets = payload.get("beatmapsets")
                 if not isinstance(response_sets, list):
                     return None
-                raw_sets = response_sets
+                if requested_page >= first_api_page:
+                    raw_sets.extend(response_sets)
                 next_cursor = payload.get("cursor_string")
                 has_next_page = False
                 if isinstance(next_cursor, str) and next_cursor:
@@ -362,7 +408,7 @@ class DirectSearchService:
 
         return DirectSearchResult(
             code=DirectSearchResultCode.FOUND,
-            result_count=51 if has_next_page else len(raw_sets),
+            result_count=len(raw_sets) + int(has_next_page),
             beatmap_sets=beatmap_sets,
         )
 
@@ -414,6 +460,11 @@ class DirectSearchService:
                             ar=beatmap["ar"],
                             hp=beatmap["drain"],
                             mode=beatmap["mode_int"],
+                            beatmap_id=(
+                                beatmap["id"]
+                                if isinstance(beatmap.get("id"), int)
+                                else None
+                            ),
                         )
                         for beatmap in sorted_maps
                     ],
@@ -453,6 +504,11 @@ class DirectSearchService:
                             ar=beatmap["AR"],
                             hp=beatmap["HP"],
                             mode=beatmap["Mode"],
+                            beatmap_id=(
+                                beatmap["BeatmapID"]
+                                if isinstance(beatmap.get("BeatmapID"), int)
+                                else None
+                            ),
                         )
                         for beatmap in diff_sorted_maps
                     ],

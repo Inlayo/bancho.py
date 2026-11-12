@@ -19,6 +19,7 @@ import app.utils
 from app import settings
 from app import state
 from app.objects.beatmap import Beatmap
+from app.objects.beatmap import api_get_ranked_status_from_akatsuki
 from app.objects.beatmap import ensure_osu_file_is_available
 from app.objects.player import Player
 from app.objects.score import Score
@@ -444,6 +445,7 @@ def get_direct_search_service() -> DirectSearchService:
         osu_api_v2_search_endpoint="https://osu.ppy.sh/api/v2/beatmapsets/search",
         osu_api_v2_cursors=app.state.cache.direct_search_cursors,
         fetch_osu_api_v2_search=_fetch_osu_api_v2_search,
+        fetch_akatsuki_status=api_get_ranked_status_from_akatsuki,
         mirror_search_endpoints=tuple(
             dict.fromkeys(
                 (

@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from datetime import datetime
 
+import pytest
+
 import app.api.dependencies as api_dependencies
 import app.services.direct_search as direct_search
 import app.state.services
+from app.constants.beatmap_statuses import RankedStatus
 from app.repositories.maps import Map
 from app.repositories.maps import MapServer
 
@@ -78,6 +81,16 @@ class _MapsRepository:
             for beatmap in self.maps
             if beatmap.set_id in set_ids and beatmap.server == server
         ]
+
+
+class _AkatsukiStatusFetcher:
+    def __init__(self, status: RankedStatus | None) -> None:
+        self.status = status
+        self.calls: list[int] = []
+
+    async def __call__(self, beatmap_id: int) -> RankedStatus | None:
+        self.calls.append(beatmap_id)
+        return self.status
 
 
 def _map(
@@ -165,6 +178,7 @@ async def test_direct_search_normalizes_mirror_response() -> None:
         _DirectSearchResponse(status_code=503, payload={}),
     )
     maps = _MapsRepository([_map(id=1, set_id=123, status=5)])
+    akatsuki_fetcher = _AkatsukiStatusFetcher(RankedStatus.Loved)
     service = direct_search.DirectSearchService(
         maps=maps,
         osu_api_v2_client_id="123",
@@ -174,6 +188,7 @@ async def test_direct_search_normalizes_mirror_response() -> None:
         fetch_osu_api_v2_search=v2_fetcher,
         mirror_search_endpoints=("https://mirror.test/search",),
         fetch_mirror_search=fetcher,
+        fetch_akatsuki_status=akatsuki_fetcher,
     )
 
     result = await service.search(
@@ -215,6 +230,7 @@ async def test_direct_search_normalizes_mirror_response() -> None:
         "HardIPipe",
     ]
     assert maps.calls == [([123], MapServer.OSU)]
+    assert akatsuki_fetcher.calls == [1]
 
 
 async def test_direct_search_falls_back_to_next_mirror_when_empty() -> None:
@@ -313,7 +329,6 @@ async def test_direct_search_uses_osu_api_v2_first() -> None:
                     ],
                 },
             ],
-            "cursor_string": "next-page",
         },
     )
     v2_fetcher = _OsuApiV2SearchFetcher(v2_response)
@@ -322,6 +337,7 @@ async def test_direct_search_uses_osu_api_v2_first() -> None:
     )
     cursors: dict[tuple[str, int, int, str], dict[int, str]] = {}
     maps = _MapsRepository([_map(id=1, set_id=123, status=5)])
+    akatsuki_fetcher = _AkatsukiStatusFetcher(RankedStatus.Loved)
     service = direct_search.DirectSearchService(
         maps=maps,
         osu_api_v2_client_id="123",
@@ -331,6 +347,7 @@ async def test_direct_search_uses_osu_api_v2_first() -> None:
         fetch_osu_api_v2_search=v2_fetcher,
         mirror_search_endpoints=("https://mirror.test/search",),
         fetch_mirror_search=mirror_fetcher,
+        fetch_akatsuki_status=akatsuki_fetcher,
     )
 
     result = await service.search(
@@ -341,7 +358,7 @@ async def test_direct_search_uses_osu_api_v2_first() -> None:
     )
 
     assert result.code is direct_search.DirectSearchResultCode.FOUND
-    assert result.result_count == 51
+    assert result.result_count == 1
     assert result.beatmap_sets is not None
     assert result.beatmap_sets[0].set_id == 123
     assert result.beatmap_sets[0].ranked_status == 8
@@ -355,9 +372,10 @@ async def test_direct_search_uses_osu_api_v2_first() -> None:
             "test-secret",
         ),
     ]
-    assert cursors[("camellia", 4, 0, "relevance_desc")][1] == "next-page"
+    assert cursors == {}
     assert mirror_fetcher.calls == []
     assert maps.calls == [([123], MapServer.OSU)]
+    assert akatsuki_fetcher.calls == [1]
 
 
 async def test_most_played_uses_osu_api_v2_plays_sort() -> None:
@@ -374,12 +392,24 @@ async def test_most_played_uses_osu_api_v2_plays_sort() -> None:
                         "last_updated": "2024-01-01T00:00:00Z",
                         "id": 123,
                         "video": False,
-                        "beatmaps": [],
+                        "beatmaps": [
+                            {
+                                "id": 456,
+                                "difficulty_rating": 5.0,
+                                "version": "Hard",
+                                "cs": 4.0,
+                                "accuracy": 8.0,
+                                "ar": 9.0,
+                                "drain": 6.0,
+                                "mode_int": 0,
+                            },
+                        ],
                     },
                 ],
             },
         ),
     )
+    akatsuki_fetcher = _AkatsukiStatusFetcher(None)
     mirror_fetcher = _DirectSearchFetcher(
         _DirectSearchResponse(status_code=503, payload=[]),
     )
@@ -392,6 +422,7 @@ async def test_most_played_uses_osu_api_v2_plays_sort() -> None:
         fetch_osu_api_v2_search=v2_fetcher,
         mirror_search_endpoints=("https://mirror.test/search",),
         fetch_mirror_search=mirror_fetcher,
+        fetch_akatsuki_status=akatsuki_fetcher,
     )
 
     result = await service.search(
@@ -404,6 +435,9 @@ async def test_most_played_uses_osu_api_v2_plays_sort() -> None:
     assert result.code is direct_search.DirectSearchResultCode.FOUND
     assert v2_fetcher.calls[0][1] == {"sort": "plays_desc"}
     assert mirror_fetcher.calls == []
+    assert result.beatmap_sets is not None
+    assert result.beatmap_sets[0].ranked_status == 0
+    assert akatsuki_fetcher.calls == [456]
 
 
 async def test_direct_search_uses_osu_api_v2_cursor_for_next_page() -> None:
@@ -420,7 +454,8 @@ async def test_direct_search_uses_osu_api_v2_cursor_for_next_page() -> None:
             client_secret: str,
         ) -> _DirectSearchResponse:
             self.calls.append(params.copy())
-            if "cursor_string" not in params:
+            cursor = params.get("cursor_string")
+            if cursor is None:
                 return _DirectSearchResponse(
                     status_code=200,
                     payload={
@@ -437,7 +472,27 @@ async def test_direct_search_uses_osu_api_v2_cursor_for_next_page() -> None:
                             }
                             for set_id in range(50)
                         ],
-                        "cursor_string": "next-page",
+                        "cursor_string": "page-1",
+                    },
+                )
+            if cursor == "page-1":
+                return _DirectSearchResponse(
+                    status_code=200,
+                    payload={
+                        "beatmapsets": [
+                            {
+                                "artist": "Artist",
+                                "title": "Title",
+                                "creator": "Creator",
+                                "status": "loved",
+                                "last_updated": "2024-01-01T00:00:00Z",
+                                "id": set_id,
+                                "video": False,
+                                "beatmaps": [],
+                            }
+                            for set_id in range(50, 100)
+                        ],
+                        "cursor_string": "page-2",
                     },
                 )
             return _DirectSearchResponse(
@@ -486,9 +541,9 @@ async def test_direct_search_uses_osu_api_v2_cursor_for_next_page() -> None:
     )
 
     assert first_page.code is direct_search.DirectSearchResultCode.FOUND
-    assert first_page.result_count == 51
+    assert first_page.result_count == 101
     assert first_page.beatmap_sets is not None
-    assert len(first_page.beatmap_sets) == 50
+    assert len(first_page.beatmap_sets) == 100
     assert second_page.code is direct_search.DirectSearchResultCode.FOUND
     assert second_page.result_count == 1
     assert second_page.beatmap_sets is not None
@@ -498,13 +553,17 @@ async def test_direct_search_uses_osu_api_v2_cursor_for_next_page() -> None:
         {"sort": "plays_desc"},
         {
             "sort": "plays_desc",
-            "cursor_string": "next-page",
+            "cursor_string": "page-1",
+        },
+        {
+            "sort": "plays_desc",
+            "cursor_string": "page-2",
         },
     ]
 
 
 async def test_osu_api_v2_search_fetches_and_caches_oauth_token(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class _HTTPClient:
         def __init__(self) -> None:
