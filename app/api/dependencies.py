@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import random
 import secrets
+import time
 from pathlib import Path
 from typing import Annotated
 from typing import Any
@@ -76,6 +78,102 @@ from app.services.web_sessions import WebSessionsService
 AVATARS_PATH = Path.cwd() / ".data/avatars"
 SCREENSHOTS_PATH = Path.cwd() / ".data/ss"
 REPLAYS_PATH = Path.cwd() / ".data/osr"
+_osu_api_v2_token_lock = asyncio.Lock()
+
+
+async def _get_osu_api_v2_access_token(
+    *,
+    client_id: str,
+    client_secret: str,
+) -> str:
+    if (
+        app.state.cache.osu_api_v2_access_token is not None
+        and time.monotonic() < app.state.cache.osu_api_v2_token_expires_at
+    ):
+        return app.state.cache.osu_api_v2_access_token
+
+    async with _osu_api_v2_token_lock:
+        if (
+            app.state.cache.osu_api_v2_access_token is not None
+            and time.monotonic() < app.state.cache.osu_api_v2_token_expires_at
+        ):
+            return app.state.cache.osu_api_v2_access_token
+
+        response = await app.state.services.http_client.post(
+            "https://osu.ppy.sh/oauth/token",
+            json={
+                "client_id": int(client_id),
+                "client_secret": client_secret,
+                "grant_type": "client_credentials",
+                "scope": "public",
+            },
+            timeout=5.0,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        if not isinstance(payload, dict):
+            raise ValueError("osu! OAuth returned an invalid token response.")
+
+        access_token = payload.get("access_token")
+        expires_in = payload.get("expires_in")
+        if (
+            not isinstance(access_token, str)
+            or not access_token
+            or not isinstance(expires_in, int | float)
+        ):
+            raise ValueError("osu! OAuth returned an invalid token response.")
+
+        app.state.cache.osu_api_v2_access_token = access_token
+        app.state.cache.osu_api_v2_token_expires_at = time.monotonic() + max(
+            1.0,
+            expires_in - 60,
+        )
+        return access_token
+
+
+async def _fetch_osu_api_v2_search(
+    url: str,
+    *,
+    params: OsuApiV2SearchParams,
+    client_id: str,
+    client_secret: str,
+) -> httpx.Response:
+    token = await _get_osu_api_v2_access_token(
+        client_id=client_id,
+        client_secret=client_secret,
+    )
+    http_params: dict[str, str | int] = {"sort": params["sort"]}
+    if "q" in params:
+        http_params["q"] = params["q"]
+    if "m" in params:
+        http_params["m"] = params["m"]
+    if "s" in params:
+        http_params["s"] = params["s"]
+    if "cursor_string" in params:
+        http_params["cursor_string"] = params["cursor_string"]
+
+    response = await app.state.services.http_client.get(
+        url,
+        params=http_params,
+        headers={"Authorization": f"Bearer {token}"},
+        timeout=2.0,
+    )
+    if response.status_code == httpx.codes.UNAUTHORIZED:
+        async with _osu_api_v2_token_lock:
+            if app.state.cache.osu_api_v2_access_token == token:
+                app.state.cache.osu_api_v2_access_token = None
+                app.state.cache.osu_api_v2_token_expires_at = 0.0
+        token = await _get_osu_api_v2_access_token(
+            client_id=client_id,
+            client_secret=client_secret,
+        )
+        response = await app.state.services.http_client.get(
+            url,
+            params=http_params,
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=2.0,
+        )
+    return response
 
 
 async def _fetch_mirror_search(
@@ -97,30 +195,6 @@ async def _fetch_mirror_search(
     return await app.state.services.http_client.get(
         url,
         params=http_params,
-        timeout=2.0,
-    )
-
-
-async def _fetch_osu_api_v2_search(
-    url: str,
-    *,
-    params: OsuApiV2SearchParams,
-    token: str,
-) -> httpx.Response:
-    http_params: dict[str, str | int] = {"sort": params["sort"]}
-    if "q" in params:
-        http_params["q"] = params["q"]
-    if "m" in params:
-        http_params["m"] = params["m"]
-    if "s" in params:
-        http_params["s"] = params["s"]
-    if "cursor_string" in params:
-        http_params["cursor_string"] = params["cursor_string"]
-
-    return await app.state.services.http_client.get(
-        url,
-        params=http_params,
-        headers={"Authorization": f"Bearer {token}"},
         timeout=2.0,
     )
 
@@ -364,7 +438,8 @@ def get_client_integrity_service() -> ClientIntegrityService:
 
 def get_direct_search_service() -> DirectSearchService:
     return DirectSearchService(
-        osu_api_v2_token=settings.OSU_API_V2_TOKEN,
+        osu_api_v2_client_id=settings.OSU_API_V2_CLIENT_ID,
+        osu_api_v2_client_secret=settings.OSU_API_V2_CLIENT_SECRET,
         osu_api_v2_search_endpoint="https://osu.ppy.sh/api/v2/beatmapsets/search",
         osu_api_v2_cursors=app.state.cache.direct_search_cursors,
         fetch_osu_api_v2_search=_fetch_osu_api_v2_search,

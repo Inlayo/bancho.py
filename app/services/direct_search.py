@@ -70,7 +70,8 @@ class OsuApiV2SearchGetter(Protocol):
         url: str,
         *,
         params: OsuApiV2SearchParams,
-        token: str,
+        client_id: str,
+        client_secret: str,
     ) -> Awaitable[DirectSearchHTTPResponse]: ...
 
 
@@ -111,7 +112,8 @@ class DirectSearchResult:
 
 @dataclass(frozen=True)
 class DirectSearchService:
-    osu_api_v2_token: str | None
+    osu_api_v2_client_id: str | None
+    osu_api_v2_client_secret: str | None
     osu_api_v2_search_endpoint: str
     osu_api_v2_cursors: MutableMapping[
         tuple[str, int, int, str],
@@ -151,7 +153,7 @@ class DirectSearchService:
             7: 1,
             8: 4,
         }.get(ranked_status)
-        if self.osu_api_v2_token:
+        if self.osu_api_v2_client_id and self.osu_api_v2_client_secret:
             osu_api_result = await self._search_osu_api_v2(
                 ranked_status=ranked_status,
                 query=search_query,
@@ -186,7 +188,7 @@ class DirectSearchService:
                 if not isinstance(payload, list):
                     continue
                 beatmap_sets = self._payload_to_sets(payload)
-            except (httpx.RequestError, KeyError, TypeError, ValueError):
+            except (httpx.HTTPError, KeyError, TypeError, ValueError):
                 continue
 
             if beatmap_sets:
@@ -214,7 +216,8 @@ class DirectSearchService:
         sort: str,
         page_num: int,
     ) -> DirectSearchResult | None:
-        assert self.osu_api_v2_token is not None
+        assert self.osu_api_v2_client_id is not None
+        assert self.osu_api_v2_client_secret is not None
         if page_num < 0:
             return None
 
@@ -258,7 +261,8 @@ class DirectSearchService:
                 response = await self.fetch_osu_api_v2_search(
                     self.osu_api_v2_search_endpoint,
                     params=params,
-                    token=self.osu_api_v2_token,
+                    client_id=self.osu_api_v2_client_id,
+                    client_secret=self.osu_api_v2_client_secret,
                 )
                 if response.status_code != 200:
                     return None
@@ -281,7 +285,7 @@ class DirectSearchService:
                     cursors = self.osu_api_v2_cursors.setdefault(cursor_key, {})
                     cursors[requested_page + 1] = next_cursor
             except (
-                httpx.RequestError,
+                httpx.HTTPError,
                 KeyError,
                 TypeError,
                 ValueError,

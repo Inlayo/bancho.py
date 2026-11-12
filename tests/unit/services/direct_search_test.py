@@ -18,6 +18,10 @@ class _DirectSearchResponse:
     def json(self) -> object:
         return self.payload
 
+    def raise_for_status(self) -> None:
+        if self.status_code >= 400:
+            raise RuntimeError("Unexpected HTTP error.")
+
 
 class _DirectSearchFetcher:
     def __init__(self, response: _DirectSearchResponse) -> None:
@@ -37,16 +41,17 @@ class _DirectSearchFetcher:
 class _OsuApiV2SearchFetcher:
     def __init__(self, response: _DirectSearchResponse) -> None:
         self.response = response
-        self.calls: list[tuple[str, direct_search.OsuApiV2SearchParams, str]] = []
+        self.calls: list[tuple[str, direct_search.OsuApiV2SearchParams, str, str]] = []
 
     async def __call__(
         self,
         url: str,
         *,
         params: direct_search.OsuApiV2SearchParams,
-        token: str,
+        client_id: str,
+        client_secret: str,
     ) -> _DirectSearchResponse:
-        self.calls.append((url, params, token))
+        self.calls.append((url, params, client_id, client_secret))
         return self.response
 
 
@@ -100,7 +105,8 @@ async def test_direct_search_normalizes_mirror_response() -> None:
         _DirectSearchResponse(status_code=503, payload={}),
     )
     service = direct_search.DirectSearchService(
-        osu_api_v2_token="test-token",
+        osu_api_v2_client_id="123",
+        osu_api_v2_client_secret="test-secret",
         osu_api_v2_search_endpoint="https://osu.ppy.sh/api/v2/beatmapsets/search",
         osu_api_v2_cursors={},
         fetch_osu_api_v2_search=v2_fetcher,
@@ -126,7 +132,8 @@ async def test_direct_search_normalizes_mirror_response() -> None:
                 "s": "ranked",
                 "sort": "relevance_desc",
             },
-            "test-token",
+            "123",
+            "test-secret",
         ),
     ]
     assert fetcher.calls == [
@@ -186,7 +193,8 @@ async def test_direct_search_falls_back_to_next_mirror_when_empty() -> None:
         _DirectSearchResponse(status_code=503, payload={}),
     )
     service = direct_search.DirectSearchService(
-        osu_api_v2_token="test-token",
+        osu_api_v2_client_id="123",
+        osu_api_v2_client_secret="test-secret",
         osu_api_v2_search_endpoint="https://osu.ppy.sh/api/v2/beatmapsets/search",
         osu_api_v2_cursors={},
         fetch_osu_api_v2_search=v2_fetcher,
@@ -249,7 +257,8 @@ async def test_direct_search_uses_osu_api_v2_first() -> None:
     )
     cursors: dict[tuple[str, int, int, str], dict[int, str]] = {}
     service = direct_search.DirectSearchService(
-        osu_api_v2_token="configured-token",
+        osu_api_v2_client_id="123",
+        osu_api_v2_client_secret="test-secret",
         osu_api_v2_search_endpoint="https://osu.ppy.sh/api/v2/beatmapsets/search",
         osu_api_v2_cursors=cursors,
         fetch_osu_api_v2_search=v2_fetcher,
@@ -275,7 +284,8 @@ async def test_direct_search_uses_osu_api_v2_first() -> None:
         (
             "https://osu.ppy.sh/api/v2/beatmapsets/search",
             {"q": "camellia", "m": 0, "sort": "relevance_desc"},
-            "configured-token",
+            "123",
+            "test-secret",
         ),
     ]
     assert cursors[("camellia", 4, 0, "relevance_desc")][1] == "next-page"
@@ -292,7 +302,8 @@ async def test_direct_search_uses_osu_api_v2_cursor_for_next_page() -> None:
             url: str,
             *,
             params: direct_search.OsuApiV2SearchParams,
-            token: str,
+            client_id: str,
+            client_secret: str,
         ) -> _DirectSearchResponse:
             self.calls.append(params.copy())
             if "cursor_string" not in params:
@@ -323,7 +334,8 @@ async def test_direct_search_uses_osu_api_v2_cursor_for_next_page() -> None:
 
     fetcher = _CursorFetcher()
     service = direct_search.DirectSearchService(
-        osu_api_v2_token="configured-token",
+        osu_api_v2_client_id="123",
+        osu_api_v2_client_secret="test-secret",
         osu_api_v2_search_endpoint="https://osu.ppy.sh/api/v2/beatmapsets/search",
         osu_api_v2_cursors={},
         fetch_osu_api_v2_search=fetcher,
@@ -354,36 +366,74 @@ async def test_direct_search_uses_osu_api_v2_cursor_for_next_page() -> None:
     ]
 
 
-async def test_osu_api_v2_search_sends_bearer_token(monkeypatch) -> None:
+async def test_osu_api_v2_search_fetches_and_caches_oauth_token(
+    monkeypatch,
+) -> None:
     class _HTTPClient:
         def __init__(self) -> None:
-            self.call: tuple[str, dict[str, object], dict[str, str], float] | None = (
-                None
+            self.post_calls: list[tuple[str, dict[str, object], float]] = []
+            self.get_calls: list[
+                tuple[str, dict[str, object], dict[str, str], float]
+            ] = []
+
+        async def post(
+            self,
+            url: str,
+            *,
+            json: dict[str, object],
+            timeout: float,
+        ) -> _DirectSearchResponse:
+            self.post_calls.append((url, json, timeout))
+            return _DirectSearchResponse(
+                status_code=200,
+                payload={"access_token": "oauth-access-token", "expires_in": 3600},
             )
 
         async def get(
             self,
             url: str,
             *,
-            params: dict[str, str | int],
+            params: dict[str, object],
             headers: dict[str, str],
             timeout: float,
         ) -> _DirectSearchResponse:
-            self.call = (url, params, headers, timeout)
-            return _DirectSearchResponse(status_code=200, payload={})
+            self.get_calls.append((url, params, headers, timeout))
+            return _DirectSearchResponse(status_code=200, payload=[])
 
     client = _HTTPClient()
     monkeypatch.setattr(app.state.services, "http_client", client)
+    monkeypatch.setattr(app.state.cache, "osu_api_v2_access_token", None)
+    monkeypatch.setattr(app.state.cache, "osu_api_v2_token_expires_at", 0.0)
 
-    await api_dependencies._fetch_osu_api_v2_search(
-        "https://osu.ppy.sh/api/v2/beatmapsets/search",
-        params={"q": "camellia", "sort": "relevance_desc"},
-        token="oauth-access-token",
-    )
+    for _ in range(2):
+        await api_dependencies._fetch_osu_api_v2_search(
+            "https://osu.ppy.sh/api/v2/beatmapsets/search",
+            params={"q": "camellia", "sort": "relevance_desc"},
+            client_id="123",
+            client_secret="oauth-client-secret",
+        )
 
-    assert client.call == (
-        "https://osu.ppy.sh/api/v2/beatmapsets/search",
-        {"q": "camellia", "sort": "relevance_desc"},
-        {"Authorization": "Bearer oauth-access-token"},
-        2.0,
+    assert client.post_calls == [
+        (
+            "https://osu.ppy.sh/oauth/token",
+            {
+                "client_id": 123,
+                "client_secret": "oauth-client-secret",
+                "grant_type": "client_credentials",
+                "scope": "public",
+            },
+            5.0,
+        ),
+    ]
+    assert (
+        client.get_calls
+        == [
+            (
+                "https://osu.ppy.sh/api/v2/beatmapsets/search",
+                {"q": "camellia", "sort": "relevance_desc"},
+                {"Authorization": "Bearer oauth-access-token"},
+                2.0,
+            ),
+        ]
+        * 2
     )

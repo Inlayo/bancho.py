@@ -11,5 +11,7 @@ bcrypt: dict[bytes, bytes] = {}  # {bcrypt: md5, ...}
 beatmap: dict[str | int, Beatmap] = {}  # {md5: map, id: map, ...}
 beatmapset: dict[int, BeatmapSet] = {}  # {bsid: map_set}
 direct_search_cursors: dict[tuple[str, int, int, str], dict[int, str]] = {}
+osu_api_v2_access_token: str | None = None
+osu_api_v2_token_expires_at = 0.0
 unsubmitted: set[str] = set()  # {md5, ...}
 needs_update: set[str] = set()  # {md5, ...}
