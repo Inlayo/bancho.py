@@ -18,7 +18,6 @@ from app.logging import Ansi
 from app.logging import log
 from app.state import services
 
-
 _SECRET_QUERY_PARAM = re.compile(r"(?i)([?&](?:token|code|secret|key)=)[^&\s]+")
 _EMAIL_QUERY_PARAM = re.compile(r"(?i)([?&]email=)[^&\s]+")
 _LONG_SECRET = re.compile(r"(?<![A-Za-z0-9])[\w-]{32,}(?![A-Za-z0-9])")
@@ -89,10 +88,7 @@ def format_audit_event(action: str, **fields: str) -> Embed:
     used_chars = len(title) + len(footer)
     for name, raw_value in fields.items():
         field_name = (
-            name.replace("_", " ")
-            .title()
-            .replace(" Id", " ID")
-            .replace(" Url", " URL")
+            name.replace("_", " ").title().replace(" Id", " ID").replace(" Url", " URL")
         )[:256]
         value = _redact_audit_value(name, raw_value) or "(none)"
         value_parts = _split_audit_value(value)
@@ -104,10 +100,7 @@ def format_audit_event(action: str, **fields: str) -> Embed:
                 else field_name
             )[:256]
             remaining_chars = _AUDIT_EMBED_VALUE_LIMIT - used_chars - len(part_name)
-            if (
-                len(embed.fields) >= _AUDIT_EMBED_FIELD_LIMIT
-                or remaining_chars <= 0
-            ):
+            if len(embed.fields) >= _AUDIT_EMBED_FIELD_LIMIT or remaining_chars <= 0:
                 return embed
 
             value_limit = min(_AUDIT_FIELD_VALUE_LIMIT, remaining_chars)
