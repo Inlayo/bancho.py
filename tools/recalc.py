@@ -130,18 +130,19 @@ async def recalculate_user(
     )
 
     total_scores = len(best_scores)
-    if not total_scores:
-        return
+    if total_scores:
+        # calculate new total weighted accuracy
+        weighted_acc = sum(row["acc"] * 0.95**i for i, row in enumerate(best_scores))
+        bonus_acc = 100.0 / (20 * (1 - 0.95**total_scores))
+        acc = (weighted_acc * bonus_acc) / 100
 
-    # calculate new total weighted accuracy
-    weighted_acc = sum(row["acc"] * 0.95**i for i, row in enumerate(best_scores))
-    bonus_acc = 100.0 / (20 * (1 - 0.95**total_scores))
-    acc = (weighted_acc * bonus_acc) / 100
-
-    # calculate new total weighted pp
-    weighted_pp = sum(row["pp"] * 0.95**i for i, row in enumerate(best_scores))
-    bonus_pp = 416.6667 * (1 - 0.9994**total_scores)
-    pp = round(weighted_pp + bonus_pp)
+        # calculate new total weighted pp
+        weighted_pp = sum(row["pp"] * 0.95**i for i, row in enumerate(best_scores))
+        bonus_pp = 416.6667 * (1 - 0.9994**total_scores)
+        pp = round(weighted_pp + bonus_pp)
+    else:
+        pp = 0
+        acc = 0.0
 
     await ctx.database.execute(
         "UPDATE stats SET pp = :pp, acc = :acc WHERE id = :id AND mode = :mode",

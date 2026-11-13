@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import importlib.metadata
 import os
 import pprint
@@ -67,6 +68,8 @@ from app.services.clans import LeaveClanResultCode
 from app.services.clans import TransferClanResultCode
 from app.services.performance import PerformanceService
 from app.services.performance import ScoreParams
+from app.services.score_submission import calculate_weighted_accuracy
+from app.services.score_submission import calculate_weighted_pp
 from app.services.tourney_pools import AddPoolMapResultCode
 from app.services.tourney_pools import CreatePoolResultCode
 from app.services.tourney_pools import TourneyPoolsService
@@ -1092,11 +1095,100 @@ async def stealth(ctx: Context) -> str | None:
 
 @command(Privileges.DEVELOPER)
 async def recalc(ctx: Context) -> str | None:
-    """Recalculate pp for a given map, or all maps."""
-    return (
-        "Please use tools/recalc.py instead.\n"
-        "If you need any support, join our Discord @ https://discord.gg/ShEQgUx."
+    """Recalculate pp for a beatmap: !recalc [beatmap id] (defaults to /np)."""
+    if len(ctx.args) > 1 or (
+        ctx.args
+        and (
+            not ctx.args[0].isdecimal()
+            or len(ctx.args[0]) > 10
+            or int(ctx.args[0]) <= 0
+            or int(ctx.args[0]) > 2_147_483_647
+        )
+    ):
+        return "Invalid syntax: !recalc [beatmap id]"
+
+    if ctx.args:
+        bmap = await Beatmap.from_bid(int(ctx.args[0]))
+        if bmap is None:
+            return "Beatmap not found."
+    else:
+        if ctx.player.last_np is None or ctx.player.last_np["bmap"] is None:
+            return "Please /np a map first, or provide a beatmap ID."
+        bmap = ctx.player.last_np["bmap"]
+
+    scores = await get_legacy_repositories().scores.fetch_many(
+        map_md5=bmap.md5,
+        status=SubmissionStatus.BEST,
+        include_hidden_players=True,
     )
+    if not scores:
+        return f"No best scores found for beatmap {bmap.id}."
+
+    osu_file_available = await ensure_osu_file_is_available(
+        bmap.id,
+        expected_md5=bmap.md5,
+    )
+    if not osu_file_available:
+        return "Beatmap file could not be found; recalculation was not performed."
+
+    score_args = [
+        ScoreParams(
+            mode=GameMode(score.mode).as_vanilla,
+            mods=int(score.mods),
+            combo=score.max_combo,
+            ngeki=score.ngeki,
+            n300=score.n300,
+            nkatu=score.nkatu,
+            n100=score.n100,
+            n50=score.n50,
+            nmiss=score.nmiss,
+        )
+        for score in scores
+    ]
+    results = await asyncio.to_thread(
+        PerformanceService().calculate_performances,
+        osu_file_path=str(BEATMAPS_PATH / f"{bmap.id}.osu"),
+        scores=score_args,
+    )
+
+    repos = get_legacy_repositories()
+    affected_user_modes: dict[int, set[GameMode]] = {}
+    for score, result in zip(scores, results, strict=True):
+        pp = min(result.performance.pp, 9999.999)
+        await repos.scores.partial_update(score.id, pp=pp)
+        affected_user_modes.setdefault(score.userid, set()).add(GameMode(score.mode))
+
+    for user_id, modes in affected_user_modes.items():
+        user = await repos.users.fetch_one(id=user_id)
+        for mode in modes:
+            best_scores = await repos.scores.fetch_weighted_best_performances(
+                user_id=user_id,
+                mode=mode,
+            )
+            pp = calculate_weighted_pp(best_scores) if best_scores else 0
+            acc = calculate_weighted_accuracy(best_scores) if best_scores else 0.0
+            await repos.stats.partial_update(
+                player_id=user_id,
+                mode=mode,
+                pp=pp,
+                acc=acc,
+            )
+
+            if user is not None and user.priv & Privileges.UNRESTRICTED:
+                await app.state.services.redis.zadd(
+                    f"bancho:leaderboard:{mode.value}",
+                    {str(user_id): pp},
+                )
+                await app.state.services.redis.zadd(
+                    f"bancho:leaderboard:{mode.value}:{user.country}",
+                    {str(user_id): pp},
+                )
+
+        online_player = app.state.sessions.players.get(id=user_id)
+        if online_player is not None:
+            await online_player.stats_from_sql_full()
+
+    return f"Recalculated {len(scores)} best scores on beatmap {bmap.id}."
 
 
 @command(Privileges.DEVELOPER, hidden=True)

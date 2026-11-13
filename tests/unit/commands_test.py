@@ -1,13 +1,19 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 
+import app.commands as commands
 import app.packets
 import app.settings
+import app.state.services
 import app.state.sessions
+from app.commands import Context
 from app.commands import ParsingError
 from app.commands import parse__with__command_args
 from app.commands import process_commands
+from app.commands import recalc
 from app.commands import status_to_id
 from app.constants.gamemodes import GameMode
 from app.constants.mods import Mods
@@ -158,6 +164,127 @@ async def test_command_dispatch_requires_the_commands_privilege(
     assert response is None
     assert target.restriction is None
     assert target.logged_out is False
+
+
+async def test_recalc_updates_score_stats_and_leaderboards(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    beatmap = SimpleNamespace(id=315, md5="map-md5")
+    player = _player(id=3, name="developer", priv=Privileges.DEVELOPER)
+    player.last_np = {"bmap": beatmap}
+
+    score = SimpleNamespace(
+        id=42,
+        userid=7,
+        mode=0,
+        mods=0,
+        max_combo=100,
+        ngeki=0,
+        n300=300,
+        nkatu=0,
+        n100=0,
+        n50=0,
+        nmiss=0,
+    )
+    updated_scores: list[tuple[int, float]] = []
+    updated_stats: list[tuple[int, int, int, float]] = []
+    leaderboard_updates: list[tuple[str, dict[str, float]]] = []
+
+    class FakeScores:
+        async def fetch_many(self, **kwargs: object) -> list[object]:
+            assert kwargs == {
+                "map_md5": "map-md5",
+                "status": commands.SubmissionStatus.BEST,
+                "include_hidden_players": True,
+            }
+            return [score]
+
+        async def partial_update(self, score_id: int, pp: float) -> None:
+            updated_scores.append((score_id, pp))
+
+        async def fetch_weighted_best_performances(
+            self,
+            *,
+            user_id: int,
+            mode: int,
+        ) -> list[object]:
+            assert (user_id, mode) == (7, 0)
+            return [SimpleNamespace(pp=updated_scores[0][1], acc=98.0)]
+
+    class FakeStats:
+        async def partial_update(
+            self,
+            *,
+            player_id: int,
+            mode: int,
+            pp: int,
+            acc: float,
+        ) -> None:
+            updated_stats.append((player_id, mode, pp, acc))
+
+    class FakeUsers:
+        async def fetch_one(self, *, id: int) -> object:
+            assert id == 7
+            return SimpleNamespace(
+                priv=Privileges.UNRESTRICTED,
+                country="kr",
+            )
+
+    repos = SimpleNamespace(
+        scores=FakeScores(),
+        stats=FakeStats(),
+        users=FakeUsers(),
+    )
+
+    class FakePerformanceService:
+        def calculate_performances(
+            self,
+            *,
+            osu_file_path: str,
+            scores: list[commands.ScoreParams],
+        ) -> list[object]:
+            assert osu_file_path.endswith("/315.osu")
+            assert scores[0].mode == 0
+            return [SimpleNamespace(performance=SimpleNamespace(pp=10000.0))]
+
+    async def ensure_osu_file_is_available(
+        beatmap_id: int,
+        expected_md5: str,
+    ) -> bool:
+        assert (beatmap_id, expected_md5) == (315, "map-md5")
+        return True
+
+    class FakeRedis:
+        async def zadd(self, key: str, values: dict[str, float]) -> None:
+            leaderboard_updates.append((key, values))
+
+    monkeypatch.setattr(commands, "get_legacy_repositories", lambda: repos)
+    monkeypatch.setattr(commands, "PerformanceService", FakePerformanceService)
+    monkeypatch.setattr(
+        commands,
+        "ensure_osu_file_is_available",
+        ensure_osu_file_is_available,
+    )
+    monkeypatch.setattr(app.state.sessions, "players", Players())
+    monkeypatch.setattr(app.state.services, "redis", FakeRedis())
+
+    response = await recalc(Context(player, "recalc", [], player))
+
+    assert response == "Recalculated 1 best scores on beatmap 315."
+    assert updated_scores == [(42, 9999.999)]
+    assert updated_stats == [(7, 0, 10000, 98.0)]
+    assert leaderboard_updates == [
+        ("bancho:leaderboard:0", {"7": 10000}),
+        ("bancho:leaderboard:0:kr", {"7": 10000}),
+    ]
+
+
+async def test_recalc_rejects_invalid_map_id() -> None:
+    player = _player(id=3, name="developer", priv=Privileges.DEVELOPER)
+
+    response = await recalc(Context(player, "recalc", ["not-a-map"], player))
+
+    assert response == "Invalid syntax: !recalc [beatmap id]"
 
 
 async def test_restrict_command_expands_reason_and_refreshes_online_target(
