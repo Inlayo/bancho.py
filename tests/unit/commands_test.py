@@ -279,12 +279,24 @@ async def test_recalc_updates_score_stats_and_leaderboards(
     ]
 
 
-async def test_recalc_rejects_invalid_map_id() -> None:
+async def test_recalc_logs_request_before_validating_args(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     player = _player(id=3, name="developer", priv=Privileges.DEVELOPER)
+    log_messages: list[str] = []
+
+    def capture_log(message: str, *args: object, **kwargs: object) -> None:
+        log_messages.append(message)
+
+    monkeypatch.setattr(commands, "log", capture_log)
 
     response = await recalc(Context(player, "recalc", ["not-a-map"], player))
 
     assert response == "Invalid syntax: !recalc [beatmap id]"
+    assert log_messages[0].startswith(
+        "In-game recalc requested by developer (id: 3)",
+    )
+    assert log_messages[1].startswith("Rejected recalc request from developer")
 
 
 async def test_restrict_command_expands_reason_and_refreshes_online_target(

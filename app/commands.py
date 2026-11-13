@@ -1107,6 +1107,13 @@ async def stealth(ctx: Context) -> str | None:
 @command(Privileges.DEVELOPER)
 async def recalc(ctx: Context) -> str | None:
     """Recalculate pp for a beatmap: !recalc [beatmap id] (defaults to /np)."""
+    log(
+        f"In-game recalc requested by {ctx.player.name} (id: {ctx.player.id}); "
+        f"args: {list(ctx.args) or ['current /np map']}.",
+        Ansi.LCYAN,
+    )
+    started_at = time.monotonic()
+
     if len(ctx.args) > 1 or (
         ctx.args
         and (
@@ -1116,30 +1123,56 @@ async def recalc(ctx: Context) -> str | None:
             or int(ctx.args[0]) > 2_147_483_647
         )
     ):
+        log(
+            f"Rejected recalc request from {ctx.player.name}: invalid syntax.",
+            Ansi.LYELLOW,
+        )
         return "Invalid syntax: !recalc [beatmap id]"
 
     if ctx.args:
         bmap = await Beatmap.from_bid(int(ctx.args[0]))
         if bmap is None:
+            log(
+                f"Recalc map not found: {ctx.args[0]} "
+                f"(requested by {ctx.player.name}, id: {ctx.player.id}).",
+                Ansi.LYELLOW,
+            )
             return "Beatmap not found."
     else:
         if ctx.player.last_np is None or ctx.player.last_np["bmap"] is None:
+            log(
+                f"Recalc request from {ctx.player.name} "
+                f"(id: {ctx.player.id}) has no /np map.",
+                Ansi.LYELLOW,
+            )
             return "Please /np a map first, or provide a beatmap ID."
         bmap = ctx.player.last_np["bmap"]
 
+    log(
+        f"Starting in-game recalc for beatmap #{bmap.id} "
+        f"({bmap.full_name}) requested by {ctx.player.name} "
+        f"(id: {ctx.player.id}).",
+        Ansi.LCYAN,
+    )
     scores = await get_legacy_repositories().scores.fetch_many(
         map_md5=bmap.md5,
         status=SubmissionStatus.BEST,
         include_hidden_players=True,
     )
     if not scores:
+        log(f"No best scores found for beatmap #{bmap.id}.", Ansi.LYELLOW)
         return f"No best scores found for beatmap {bmap.id}."
 
+    log(f"Recalculating {len(scores)} best scores on beatmap #{bmap.id}.", Ansi.LCYAN)
     osu_file_available = await ensure_osu_file_is_available(
         bmap.id,
         expected_md5=bmap.md5,
     )
     if not osu_file_available:
+        log(
+            f"Beatmap file unavailable for recalc of beatmap #{bmap.id}.",
+            Ansi.LYELLOW,
+        )
         return "Beatmap file could not be found; recalculation was not performed."
 
     score_args = [
@@ -1199,6 +1232,12 @@ async def recalc(ctx: Context) -> str | None:
         if online_player is not None:
             await online_player.stats_from_sql_full()
 
+    log(
+        f"Completed in-game recalc for beatmap #{bmap.id}: "
+        f"{len(scores)} scores, {len(affected_user_modes)} users, "
+        f"{time.monotonic() - started_at:.2f}s.",
+        Ansi.LGREEN,
+    )
     return f"Recalculated {len(scores)} best scores on beatmap {bmap.id}."
 
 
