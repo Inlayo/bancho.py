@@ -42,7 +42,15 @@ async def send_restriction_notice(email: str, username: str, reason: str) -> Non
 
 async def _send_email(recipient: str, subject: str, body: str) -> None:
     if not settings.SMTP_HOST:
-        raise RuntimeError("SMTP is not configured.")
+        error = "SMTP is not configured."
+        _audit_email_delivery(
+            "Email delivery failed",
+            recipient,
+            subject,
+            body,
+            error=error,
+        )
+        raise RuntimeError(error)
 
     message = EmailMessage()
     message["From"] = formataddr(
@@ -68,15 +76,39 @@ async def _send_email(recipient: str, subject: str, body: str) -> None:
     try:
         await asyncio.to_thread(send_sync)
     except (OSError, smtplib.SMTPException) as exc:
+        _audit_email_delivery(
+            "Email delivery failed",
+            recipient,
+            subject,
+            body,
+            error=str(exc),
+        )
         raise RuntimeError("Email delivery failed.") from exc
 
-    send_audit_log(
-        format_audit_event(
-            "Email sent",
-            recipient=recipient,
-            email_subject=subject,
-            email_body=body,
+    _audit_email_delivery("Email sent", recipient, subject, body)
+
+
+def _audit_email_delivery(
+    action: str,
+    recipient: str,
+    subject: str,
+    body: str,
+    *,
+    error: str | None = None,
+) -> None:
+    fields = {
+        "sender": formataddr(
+            (settings.SMTP_FROM_NAME, settings.SMTP_FROM_EMAIL),
         ),
+        "recipient": recipient,
+        "email_subject": subject,
+        "email_body": body,
+    }
+    if error is not None:
+        fields["error"] = error
+
+    send_audit_log(
+        format_audit_event(action, **fields),
         category="email",
     )
 

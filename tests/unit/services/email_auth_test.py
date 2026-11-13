@@ -39,11 +39,13 @@ async def test_send_restriction_notice_includes_discord_appeal(
     )
 
 
-async def test_send_email_audits_recipient_subject_and_full_body(
+async def test_send_email_audits_recipient_subject_and_redacted_body(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(settings, "SMTP_HOST", "smtp.example.com")
     monkeypatch.setattr(settings, "SMTP_PORT", 465)
+    monkeypatch.setattr(settings, "SMTP_FROM_NAME", "bancho.py")
+    monkeypatch.setattr(settings, "SMTP_FROM_EMAIL", "noreply@example.com")
     sent_messages = []
     audit_events: list[tuple[Embed, str]] = []
 
@@ -74,16 +76,58 @@ async def test_send_email_audits_recipient_subject_and_full_body(
     await email_auth._send_email(
         "player@example.com",
         "Verify your email address",
-        "Use token secret-token at https://example.com/register?token=secret-token",
+        "Use token:\n\nsecret-token\n\n"
+        "https://example.com/register?token=secret-token",
     )
 
     assert len(sent_messages) == 1
     assert len(audit_events) == 1
     embed, category = audit_events[0]
     assert category == "email"
-    assert embed.description == (
-        "**Recipient:** player(at)example.com\n"
-        "**Email Subject:** Verify your email address\n"
-        "**Email Body:** Use token secret-token at "
-        "https://example.com/register?token=secret-token"
-    )
+    assert embed.description is None
+    assert [(field.name, field.value) for field in embed.fields] == [
+        ("Sender", "bancho.py <noreply@example.com>"),
+        ("Recipient", "p***@example.com"),
+        ("Email Subject", "Verify your email address"),
+        (
+            "Email Body",
+            "Use token:\n\n[REDACTED]\n\n"
+            "https://example.com/register?token=[REDACTED]",
+        ),
+    ]
+
+
+async def test_send_email_audits_failure_with_message_details(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "SMTP_HOST", "")
+    monkeypatch.setattr(settings, "SMTP_FROM_NAME", "bancho.py")
+    monkeypatch.setattr(settings, "SMTP_FROM_EMAIL", "noreply@example.com")
+    audit_events: list[tuple[Embed, str]] = []
+
+    def capture_audit(embed: Embed, *, category: str) -> None:
+        audit_events.append((embed, category))
+
+    monkeypatch.setattr(email_auth, "send_audit_log", capture_audit)
+
+    with pytest.raises(RuntimeError, match="SMTP is not configured"):
+        await email_auth._send_email(
+            "player@example.com",
+            "Reset your password",
+            "Open https://example.com/reset?token=secret-token",
+        )
+
+    assert len(audit_events) == 1
+    embed, category = audit_events[0]
+    assert category == "email"
+    assert embed.title == "Email delivery failed"
+    assert [(field.name, field.value) for field in embed.fields] == [
+        ("Sender", "bancho.py <noreply@example.com>"),
+        ("Recipient", "p***@example.com"),
+        ("Email Subject", "Reset your password"),
+        (
+            "Email Body",
+            "Open https://example.com/reset?token=[REDACTED]",
+        ),
+        ("Error", "SMTP is not configured."),
+    ]

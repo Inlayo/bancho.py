@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from datetime import UTC
 from datetime import datetime
 from typing import Any
@@ -18,8 +19,50 @@ from app.logging import log
 from app.state import services
 
 
+_SECRET_QUERY_PARAM = re.compile(r"(?i)([?&](?:token|code|secret|key)=)[^&\s]+")
+_EMAIL_QUERY_PARAM = re.compile(r"(?i)([?&]email=)[^&\s]+")
+_LONG_SECRET = re.compile(r"(?<![A-Za-z0-9])[\w-]{32,}(?![A-Za-z0-9])")
+_STANDALONE_TOKEN = re.compile(r"(?m)^\s*[A-Za-z0-9_-]{8,}\s*$")
+_AUDIT_FIELD_VALUE_LIMIT = 1024
+_AUDIT_EMBED_VALUE_LIMIT = 6000
+_AUDIT_EMBED_FIELD_LIMIT = 25
+
+
+def _redact_audit_value(name: str, value: str) -> str:
+    value = value.replace("\r\n", "\n").replace("\r", "\n")
+    if not value.strip():
+        return ""
+    if name.casefold() == "recipient" and "@" in value:
+        local_part, _, domain = value.rpartition("@")
+        value = f"{local_part[:1]}***@{domain}"
+
+    value = _SECRET_QUERY_PARAM.sub(r"\1[REDACTED]", value)
+    value = _EMAIL_QUERY_PARAM.sub(r"\1[REDACTED]", value)
+    if name.casefold() == "email_body":
+        value = _LONG_SECRET.sub("[REDACTED]", value)
+        value = _STANDALONE_TOKEN.sub("[REDACTED]", value)
+    return value
+
+
+def _split_audit_value(value: str) -> list[str]:
+    parts: list[str] = []
+    while len(value) > _AUDIT_FIELD_VALUE_LIMIT:
+        split_at = value.rfind("\n", 0, _AUDIT_FIELD_VALUE_LIMIT + 1)
+        if split_at < _AUDIT_FIELD_VALUE_LIMIT // 2:
+            split_at = value.rfind(" ", 0, _AUDIT_FIELD_VALUE_LIMIT + 1)
+        if split_at < _AUDIT_FIELD_VALUE_LIMIT // 2:
+            split_at = _AUDIT_FIELD_VALUE_LIMIT
+
+        parts.append(value[:split_at])
+        value = value[split_at:]
+
+    if value or not parts:
+        parts.append(value)
+    return parts
+
+
 def format_audit_event(action: str, **fields: str) -> Embed:
-    """Create a compact, consistently formatted audit-log embed."""
+    """Create a readable audit-log embed with safely redacted details."""
     normalized_action = action.casefold()
     if any(
         event in normalized_action
@@ -34,18 +77,52 @@ def format_audit_event(action: str, **fields: str) -> Embed:
     else:
         color = 0x5865F2
 
-    description = "\n".join(
-        f"**{name.replace('_', ' ').title()}:** "
-        f"{' '.join(value.replace('@', '(at)').split()) or '-'}"
-        for name, value in fields.items()
-    )
+    title = action.strip()[:256] or "Audit Event"
     embed = Embed(
-        title=action.replace("@", "(at)")[:256],
-        description=description[:4093] + ("..." if len(description) > 4096 else ""),
+        title=title,
         color=color,
         timestamp=datetime.now(UTC).isoformat(),
     )
-    embed.set_footer(text="bancho.py | Audit Log")
+    footer = "bancho.py | Audit Log"
+    embed.set_footer(text=footer)
+
+    used_chars = len(title) + len(footer)
+    for name, raw_value in fields.items():
+        field_name = (
+            name.replace("_", " ")
+            .title()
+            .replace(" Id", " ID")
+            .replace(" Url", " URL")
+        )[:256]
+        value = _redact_audit_value(name, raw_value) or "(none)"
+        value_parts = _split_audit_value(value)
+
+        for index, value_part in enumerate(value_parts, start=1):
+            part_name = (
+                f"{field_name} ({index}/{len(value_parts)})"
+                if len(value_parts) > 1
+                else field_name
+            )[:256]
+            remaining_chars = _AUDIT_EMBED_VALUE_LIMIT - used_chars - len(part_name)
+            if (
+                len(embed.fields) >= _AUDIT_EMBED_FIELD_LIMIT
+                or remaining_chars <= 0
+            ):
+                return embed
+
+            value_limit = min(_AUDIT_FIELD_VALUE_LIMIT, remaining_chars)
+            if len(value_part) > value_limit:
+                marker = "... (truncated)"
+                if value_limit <= len(marker):
+                    value_part = value_part[:value_limit]
+                else:
+                    value_part = (
+                        value_part[: value_limit - len(marker)].rstrip() + marker
+                    )
+
+            embed.add_field(part_name, value_part, inline=False)
+            used_chars += len(part_name) + len(value_part)
+
     return embed
 
 
@@ -150,6 +227,7 @@ class Webhook:
         self.avatar_url = kwargs.get("avatar_url")
         self.tts = kwargs.get("tts")
         self.file = kwargs.get("file")
+        self.allowed_mentions = kwargs.get("allowed_mentions")
         self.embeds = kwargs.get("embeds", [])
 
     def add_embed(self, embed: Embed) -> None:
@@ -167,7 +245,14 @@ class Webhook:
 
         payload: dict[str, Any] = {"embeds": []}
 
-        for key in ("content", "username", "avatar_url", "tts", "file"):
+        for key in (
+            "content",
+            "username",
+            "avatar_url",
+            "tts",
+            "file",
+            "allowed_mentions",
+        ):
             val = getattr(self, key)
             if val is not None:
                 payload[key] = val
@@ -236,6 +321,7 @@ def send_audit_log(
             webhook = Webhook(
                 webhook_url,
                 username="bancho.py",
+                allowed_mentions={"parse": []},
             )
             webhook.add_embed(embed)
             await webhook.post()

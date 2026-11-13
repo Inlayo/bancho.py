@@ -511,20 +511,6 @@ class Player:
                 await send_restriction_notice(user.email, self.name, reason)
             except RuntimeError as exc:
                 log(f"Failed to send restriction email to {self}: {exc}")
-                from app.services.email_auth import build_restriction_notice
-
-                email_subject, email_body = build_restriction_notice(self.name, reason)
-                send_audit_log(
-                    format_audit_event(
-                        "Restriction email failed",
-                        target=f"{self.name} (id: {self.id})",
-                        reason=reason,
-                        error=str(exc),
-                        email_subject=email_subject,
-                        email_body=email_body,
-                    ),
-                    category="email",
-                )
 
         asyncio.create_task(send_restriction_email())  # type: ignore[unused-awaitable]
 

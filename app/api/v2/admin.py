@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from typing import Annotated
 from typing import Literal
 
@@ -11,6 +12,7 @@ from pydantic import BaseModel
 from pydantic import Field
 
 import app.packets
+import app.settings
 import app.state
 import app.state.cache
 from app.api import dependencies as api_dependencies
@@ -606,6 +608,11 @@ async def update_admin_map_status(
         if args.scope == "set"
         else [beatmap]
     )
+    previous_statuses = Counter(updated_map.status for updated_map in updated_maps)
+    previous_status_summary = ", ".join(
+        f"{RankedStatus(map_status)} ({count})"
+        for map_status, count in previous_statuses.items()
+    )
 
     async with app.state.services.database.transaction():
         for updated_map in updated_maps:
@@ -633,8 +640,18 @@ async def update_admin_map_status(
         format_audit_event(
             "Beatmap status updated",
             actor=f"{actor.name} (id: {actor.id})",
-            beatmap=f"{args.scope} #{map_id} (set #{beatmap.set_id})",
-            status=str(new_status),
+            scope=args.scope,
+            beatmap=f"{beatmap.artist} - {beatmap.title} [{beatmap.version}]",
+            beatmap_id=str(beatmap.id),
+            beatmap_set_id=str(beatmap.set_id),
+            beatmap_url=(
+                f"https://osu.{app.settings.DOMAIN}/b/{beatmap.id}"
+                if beatmap.server == "osu!"
+                else "Private-server map"
+            ),
+            server=beatmap.server,
+            previous_status=previous_status_summary,
+            new_status=f"{new_status} ({new_status.value})",
             maps_updated=str(len(updated_maps)),
         ),
         category="beatmap",

@@ -10,6 +10,7 @@ import signal
 import time
 import traceback
 import uuid
+from collections import Counter
 from collections.abc import Awaitable
 from collections.abc import Callable
 from collections.abc import Mapping
@@ -664,6 +665,11 @@ async def _map(ctx: Context) -> str | None:
 
     bmap = ctx.player.last_np["bmap"]
     new_status = RankedStatus(status_to_id(ctx.args[0]))
+    maps_in_scope = bmap.set.maps if ctx.args[1] == "set" else [bmap]
+    previous_statuses = Counter(map.status for map in maps_in_scope)
+    previous_status_summary = ", ".join(
+        f"{status} ({count})" for status, count in previous_statuses.items()
+    )
 
     if ctx.args[1] == "map":
         if bmap.status == new_status:
@@ -726,8 +732,13 @@ async def _map(ctx: Context) -> str | None:
         format_audit_event(
             "Beatmap status updated",
             actor=f"{ctx.player.name} (id: {ctx.player.id})",
-            beatmap=f"{ctx.args[1]} #{bmap.id} (set #{bmap.set_id})",
-            status=str(new_status),
+            scope=ctx.args[1],
+            beatmap=bmap.full_name,
+            beatmap_id=str(bmap.id),
+            beatmap_set_id=str(bmap.set_id),
+            beatmap_url=bmap.url,
+            previous_status=previous_status_summary,
+            new_status=f"{new_status} ({new_status.value})",
             maps_updated=str(len(modified_beatmap_ids)),
         ),
         category="beatmap",
