@@ -1055,6 +1055,7 @@ class ScoresRepository:
         minimum_pp: float,
         include_hidden_players: bool,
         always_visible_player_id: int | None,
+        since: datetime | None = None,
     ) -> list[dict[str, object]]:
         select_stmt = (
             select(
@@ -1104,6 +1105,8 @@ class ScoresRepository:
             select_stmt = select_stmt.where(
                 self._player_visibility_clause(always_visible_player_id),
             )
+        if since is not None:
+            select_stmt = select_stmt.where(ScoresTable.play_time >= since)
 
         rows = await self._database.fetch_all(select_stmt)
         results: list[dict[str, object]] = []

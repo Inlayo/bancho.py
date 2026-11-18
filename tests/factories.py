@@ -139,6 +139,7 @@ async def create_score(
     mods: int = 64,
     status: int = 2,
     mode: int = 0,
+    play_time: datetime = datetime(2024, 1, 1, 12, 30, 0),
 ) -> Score:
     return await ScoresRepository(app.state.services.database).create(
         map_md5=map_md5,
@@ -156,7 +157,7 @@ async def create_score(
         grade="S",
         status=status,
         mode=mode,
-        play_time=datetime(2024, 1, 1, 12, 30, 0),
+        play_time=play_time,
         time_elapsed=120_000,
         client_flags=0,
         user_id=player_id,

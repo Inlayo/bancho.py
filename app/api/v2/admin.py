@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from collections import Counter
+from datetime import datetime
+from datetime import timedelta
 from typing import Annotated
 from typing import Literal
 
@@ -18,8 +20,10 @@ import app.state.cache
 from app.api import dependencies as api_dependencies
 from app.api.v2.common import actors
 from app.api.v2.common import responses
+from app.api.v2.common.parameters import GameModeParam
 from app.api.v2.common.responses import Failure
 from app.api.v2.common.responses import Success
+from app.api.v2.models.scores import ScoreDetail
 from app.constants.beatmap_statuses import RankedStatus
 from app.constants.gamemodes import GameMode
 from app.constants.privileges import Privileges
@@ -50,6 +54,13 @@ MANAGED_ROLE_PRIVILEGES = (
     | Privileges.DEVELOPER
 )
 BASE_PRIVILEGES = Privileges.UNRESTRICTED | Privileges.VERIFIED
+TOP_PLAY_PERIODS = {
+    "1h": timedelta(hours=1),
+    "1d": timedelta(days=1),
+    "1w": timedelta(weeks=1),
+    "1m": timedelta(days=30),
+    "3m": timedelta(days=90),
+}
 
 
 class UpdatePrivilegesRequest(BaseModel):
@@ -105,6 +116,44 @@ def _can_manage_target(actor: User, target_privileges: int) -> bool:
     return (
         actor.priv & Privileges.DEVELOPER.value != 0
         or target_privileges & int(Privileges.STAFF) == 0
+    )
+
+
+@router.get("/admin/top-plays")
+async def get_admin_top_plays(
+    *,
+    mode: GameModeParam = Query(0),
+    period: Literal["1h", "1d", "1w", "1m", "3m"] = Query("1d"),
+    limit: int = Query(10, ge=1, le=50),
+    actor: Annotated[
+        User | None,
+        Depends(actors.get_optional_actor),
+    ],
+    scores: Annotated[
+        ScoresRepository,
+        Depends(api_dependencies.get_scores_repository),
+    ],
+) -> Success[list[ScoreDetail]] | Failure:
+    denied = _require_admin(actor)
+    if denied is not None:
+        return denied
+
+    rows = await scores.fetch_top_play_rows(
+        mode=int(GameMode(mode)),
+        limit=limit,
+        map_statuses=[
+            RankedStatus.Ranked.value,
+            RankedStatus.Approved.value,
+        ],
+        minimum_pp=0,
+        include_hidden_players=False,
+        always_visible_player_id=None,
+        since=datetime.now() - TOP_PLAY_PERIODS[period],
+    )
+    result = [ScoreDetail.model_validate(row) for row in rows]
+    return responses.success(
+        result,
+        meta={"mode": mode, "period": period, "limit": limit, "total": len(result)},
     )
 
 

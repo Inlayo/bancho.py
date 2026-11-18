@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import secrets
+from datetime import datetime
+from datetime import timedelta
 from pathlib import Path
 
 import httpx
@@ -332,6 +334,77 @@ async def test_v2_top_plays_route_uses_valid_gamemodes_and_best_scores_only(
         params={"mode": 7},
     )
     assert invalid_response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+
+async def test_admin_top_plays_filters_period_and_hidden_players(
+    http_client: AsyncClient,
+) -> None:
+    now = datetime.now()
+    recent_player = await factories.create_user()
+    older_player = await factories.create_user()
+    hidden_player = await factories.create_user(priv=0)
+    admin = await factories.create_user(
+        priv=int(
+            Privileges.UNRESTRICTED
+            | Privileges.VERIFIED
+            | Privileges.ADMINISTRATOR,
+        ),
+    )
+    beatmap = await factories.create_map()
+
+    recent_score = await factories.create_score(
+        player_id=recent_player.id,
+        map_md5=beatmap.md5,
+        pp=200,
+        play_time=now - timedelta(minutes=30),
+    )
+    await factories.create_score(
+        player_id=older_player.id,
+        map_md5=beatmap.md5,
+        pp=300,
+        play_time=now - timedelta(hours=2),
+    )
+    await factories.create_score(
+        player_id=hidden_player.id,
+        map_md5=beatmap.md5,
+        pp=500,
+        play_time=now - timedelta(minutes=10),
+    )
+
+    anonymous_response = await http_client.get(
+        "/v2/admin/top-plays",
+        headers=API_HEADERS,
+        params={"mode": 0, "period": "1h"},
+    )
+    assert anonymous_response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    session_token = secrets.token_hex(32)
+    sessions = WebSessionsRepository(app.state.services.redis)
+    await sessions.create(session_token, admin.id, expiry_seconds=60)
+    http_client.cookies.set("bancho_session", session_token)
+    try:
+        recent_response = await http_client.get(
+            "/v2/admin/top-plays",
+            headers=API_HEADERS,
+            params={"mode": 0, "period": "1h"},
+        )
+        assert recent_response.status_code == status.HTTP_200_OK
+        recent_scores = recent_response.json()["data"]
+        assert [score["id"] for score in recent_scores] == [recent_score.id]
+
+        day_response = await http_client.get(
+            "/v2/admin/top-plays",
+            headers=API_HEADERS,
+            params={"mode": 0, "period": "1d"},
+        )
+        assert day_response.status_code == status.HTTP_200_OK
+        day_scores = day_response.json()["data"]
+        assert {score["player"]["id"] for score in day_scores} == {
+            recent_player.id,
+            older_player.id,
+        }
+    finally:
+        await sessions.delete(session_token)
 
 
 async def test_v2_player_stats_include_leaderboard_ranks(
