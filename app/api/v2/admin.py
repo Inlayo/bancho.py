@@ -705,6 +705,20 @@ async def update_admin_map_status(
         ),
         category="beatmap",
     )
+    if beatmap.server == "osu!":
+        send_audit_log(
+            format_audit_event(
+                "Beatmap status updated",
+                beatmap=f"{beatmap.artist} - {beatmap.title} [{beatmap.version}]",
+                beatmap_id=str(beatmap.id),
+                beatmap_set_id=str(beatmap.set_id),
+                beatmap_url=f"https://osu.{app.settings.DOMAIN}/b/{beatmap.id}",
+                previous_status=previous_status_summary,
+                new_status=f"{new_status} ({new_status.value})",
+                maps_updated=str(len(updated_maps)),
+            ),
+            category="beatmap_public",
+        )
 
     return responses.success(
         {

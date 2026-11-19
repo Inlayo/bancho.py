@@ -61,12 +61,21 @@ async def test_send_audit_log_posts_embed_without_mention_pings(
     assert embeds[0].footer.text == "bancho.py | Audit Log"
 
 
-async def test_send_audit_log_uses_category_webhook_or_default(
+async def test_send_audit_log_uses_category_webhook_without_private_fallback(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(discord.settings, "DISCORD_AUDIT_LOG_WEBHOOK", "default-url")
     monkeypatch.setattr(discord.settings, "DISCORD_ADMIN_LOG_WEBHOOK", "")
-    monkeypatch.setattr(discord.settings, "DISCORD_BEATMAP_LOG_WEBHOOK", "beatmap-url")
+    monkeypatch.setattr(
+        discord.settings,
+        "DISCORD_BEATMAP_PRIVATE_LOG_WEBHOOK",
+        "beatmap-url",
+    )
+    monkeypatch.setattr(
+        discord.settings,
+        "DISCORD_BEATMAP_PUBLIC_LOG_WEBHOOK",
+        "public-beatmap-url",
+    )
     monkeypatch.setattr(
         discord.settings,
         "DISCORD_MODERATION_LOG_WEBHOOK",
@@ -85,7 +94,7 @@ async def test_send_audit_log_uses_category_webhook_or_default(
 
         async def post(self) -> None:
             posted.append(self.url)
-            if len(posted) == 4:
+            if len(posted) == 3:
                 posted_event.set()
 
     monkeypatch.setattr(discord, "Webhook", _FakeWebhook)
@@ -95,14 +104,16 @@ async def test_send_audit_log_uses_category_webhook_or_default(
     discord.send_audit_log(embed, category="moderation")
     discord.send_audit_log(embed, category="email")
     discord.send_audit_log(embed, category="admin")
+    discord.send_audit_log(embed, category="beatmap_public")
     await asyncio.wait_for(posted_event.wait(), timeout=1)
 
-    assert posted == [
-        "beatmap-url",
-        "moderation-url",
-        "default-url",
-        "default-url",
-    ]
+    assert sorted(posted) == sorted(
+        [
+            "beatmap-url",
+            "moderation-url",
+            "public-beatmap-url",
+        ],
+    )
 
 
 def test_format_audit_event_uses_consistent_labeled_fields() -> None:
@@ -120,7 +131,7 @@ def test_format_audit_event_uses_consistent_labeled_fields() -> None:
     assert embed.color == 0x5865F2
 
 
-def test_format_audit_event_preserves_email_layout_and_redacts_secrets() -> None:
+def test_format_audit_event_preserves_email_body_including_tokens() -> None:
     token = "secret-token"
     embed = discord.format_audit_event(
         "Email sent",
@@ -140,9 +151,9 @@ def test_format_audit_event_preserves_email_layout_and_redacts_secrets() -> None
         (
             "Email Body",
             "Use this token:\n\n"
-            "[REDACTED]\n\n"
-            "Open https://example.com/verify?token=[REDACTED]"
-            "&email=[REDACTED]",
+            "secret-token\n\n"
+            "Open https://example.com/verify?token=secret-token"
+            "&email=player%40example.com",
         ),
     ]
 

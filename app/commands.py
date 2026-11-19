@@ -743,6 +743,21 @@ async def _map(ctx: Context) -> str | None:
         ),
         category="beatmap",
     )
+    map_record = await repositories.maps.fetch_one(id=bmap.id)
+    if map_record is not None and map_record.server == "osu!":
+        send_audit_log(
+            format_audit_event(
+                "Beatmap status updated",
+                beatmap=bmap.full_name,
+                beatmap_id=str(bmap.id),
+                beatmap_set_id=str(bmap.set_id),
+                beatmap_url=bmap.url,
+                previous_status=previous_status_summary,
+                new_status=f"{new_status} ({new_status.value})",
+                maps_updated=str(len(modified_beatmap_ids)),
+            ),
+            category="beatmap_public",
+        )
     return f"{bmap.embed} updated to {new_status!s}."
 
 

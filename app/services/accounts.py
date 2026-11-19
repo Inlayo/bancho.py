@@ -14,6 +14,8 @@ import bcrypt
 from app._typing import IPAddress
 from app.adapters.database import Database
 from app.constants import regexes
+from app.discord import format_audit_event
+from app.discord import send_audit_log
 from app.logging import Ansi
 from app.logging import log
 from app.repositories.stats import StatsRepository
@@ -218,6 +220,17 @@ class AccountRegistrationService:
                 country=country,
             )
             await self.stats.create_all_modes(player_id=player.id)
+
+        send_audit_log(
+            format_audit_event(
+                "Account registered",
+                username=player.name,
+                user_id=str(player.id),
+                email=email,
+                country=country,
+            ),
+            category="admin",
+        )
 
         return RegisteredAccount(
             player=player,

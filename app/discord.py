@@ -20,8 +20,6 @@ from app.state import services
 
 _SECRET_QUERY_PARAM = re.compile(r"(?i)([?&](?:token|code|secret|key)=)[^&\s]+")
 _EMAIL_QUERY_PARAM = re.compile(r"(?i)([?&]email=)[^&\s]+")
-_LONG_SECRET = re.compile(r"(?<![A-Za-z0-9])[\w-]{32,}(?![A-Za-z0-9])")
-_STANDALONE_TOKEN = re.compile(r"(?m)^\s*[A-Za-z0-9_-]{8,}\s*$")
 _AUDIT_FIELD_VALUE_LIMIT = 1024
 _AUDIT_EMBED_VALUE_LIMIT = 6000
 _AUDIT_EMBED_FIELD_LIMIT = 25
@@ -31,15 +29,14 @@ def _redact_audit_value(name: str, value: str) -> str:
     value = value.replace("\r\n", "\n").replace("\r", "\n")
     if not value.strip():
         return ""
+    if name.casefold() == "email_body":
+        return value
     if name.casefold() == "recipient" and "@" in value:
         local_part, _, domain = value.rpartition("@")
         value = f"{local_part[:1]}***@{domain}"
 
     value = _SECRET_QUERY_PARAM.sub(r"\1[REDACTED]", value)
     value = _EMAIL_QUERY_PARAM.sub(r"\1[REDACTED]", value)
-    if name.casefold() == "email_body":
-        value = _LONG_SECRET.sub("[REDACTED]", value)
-        value = _STANDALONE_TOKEN.sub("[REDACTED]", value)
     return value
 
 
@@ -292,20 +289,29 @@ class Webhook:
 def send_audit_log(
     embed: Embed,
     *,
-    category: Literal["admin", "beatmap", "moderation", "email"] | None = None,
+    category: Literal[
+        "admin",
+        "beatmap",
+        "beatmap_public",
+        "moderation",
+        "email",
+    ]
+    | None = None,
 ) -> None:
-    """Post an audit event to its category webhook or the default webhook."""
+    """Post an audit event only to its explicitly configured category webhook."""
     if category == "admin":
         category_webhook = settings.DISCORD_ADMIN_LOG_WEBHOOK
     elif category == "beatmap":
-        category_webhook = settings.DISCORD_BEATMAP_LOG_WEBHOOK
+        category_webhook = settings.DISCORD_BEATMAP_PRIVATE_LOG_WEBHOOK
+    elif category == "beatmap_public":
+        category_webhook = settings.DISCORD_BEATMAP_PUBLIC_LOG_WEBHOOK
     elif category == "moderation":
         category_webhook = settings.DISCORD_MODERATION_LOG_WEBHOOK
     elif category == "email":
         category_webhook = settings.DISCORD_EMAIL_LOG_WEBHOOK
     else:
-        category_webhook = None
-    webhook_url = category_webhook or settings.DISCORD_AUDIT_LOG_WEBHOOK
+        category_webhook = settings.DISCORD_AUDIT_LOG_WEBHOOK
+    webhook_url = category_webhook
     if not webhook_url:
         return
 
