@@ -10,7 +10,7 @@ import app.discord as discord
 async def test_send_audit_log_posts_embed_without_mention_pings(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(discord.settings, "DISCORD_AUDIT_LOG_WEBHOOK", "webhook-url")
+    monkeypatch.setattr(discord.settings, "DISCORD_PRIVATE_LOG_WEBHOOK", "webhook-url")
     posted: list[tuple[str, str, dict[str, list[str]], list[discord.Embed]]] = []
     posted_event = asyncio.Event()
 
@@ -61,27 +61,11 @@ async def test_send_audit_log_posts_embed_without_mention_pings(
     assert embeds[0].footer.text == "bancho.py | Audit Log"
 
 
-async def test_send_audit_log_uses_category_webhook_without_private_fallback(
+async def test_send_audit_log_routes_to_public_or_private_webhook(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(discord.settings, "DISCORD_AUDIT_LOG_WEBHOOK", "default-url")
-    monkeypatch.setattr(discord.settings, "DISCORD_ADMIN_LOG_WEBHOOK", "")
-    monkeypatch.setattr(
-        discord.settings,
-        "DISCORD_BEATMAP_PRIVATE_LOG_WEBHOOK",
-        "beatmap-url",
-    )
-    monkeypatch.setattr(
-        discord.settings,
-        "DISCORD_BEATMAP_PUBLIC_LOG_WEBHOOK",
-        "public-beatmap-url",
-    )
-    monkeypatch.setattr(
-        discord.settings,
-        "DISCORD_MODERATION_LOG_WEBHOOK",
-        "moderation-url",
-    )
-    monkeypatch.setattr(discord.settings, "DISCORD_EMAIL_LOG_WEBHOOK", "")
+    monkeypatch.setattr(discord.settings, "DISCORD_PRIVATE_LOG_WEBHOOK", "private-url")
+    monkeypatch.setattr(discord.settings, "DISCORD_PUBLIC_LOG_WEBHOOK", "public-url")
     posted: list[str] = []
     posted_event = asyncio.Event()
 
@@ -94,7 +78,7 @@ async def test_send_audit_log_uses_category_webhook_without_private_fallback(
 
         async def post(self) -> None:
             posted.append(self.url)
-            if len(posted) == 3:
+            if len(posted) == 6:
                 posted_event.set()
 
     monkeypatch.setattr(discord, "Webhook", _FakeWebhook)
@@ -105,14 +89,11 @@ async def test_send_audit_log_uses_category_webhook_without_private_fallback(
     discord.send_audit_log(embed, category="email")
     discord.send_audit_log(embed, category="admin")
     discord.send_audit_log(embed, category="beatmap_public")
+    discord.send_audit_log(embed)
     await asyncio.wait_for(posted_event.wait(), timeout=1)
 
     assert sorted(posted) == sorted(
-        [
-            "beatmap-url",
-            "moderation-url",
-            "public-beatmap-url",
-        ],
+        ["private-url"] * 5 + ["public-url"],
     )
 
 

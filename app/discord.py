@@ -298,20 +298,12 @@ def send_audit_log(
     ]
     | None = None,
 ) -> None:
-    """Post an audit event only to its explicitly configured category webhook."""
-    if category == "admin":
-        category_webhook = settings.DISCORD_ADMIN_LOG_WEBHOOK
-    elif category == "beatmap":
-        category_webhook = settings.DISCORD_BEATMAP_PRIVATE_LOG_WEBHOOK
-    elif category == "beatmap_public":
-        category_webhook = settings.DISCORD_BEATMAP_PUBLIC_LOG_WEBHOOK
-    elif category == "moderation":
-        category_webhook = settings.DISCORD_MODERATION_LOG_WEBHOOK
-    elif category == "email":
-        category_webhook = settings.DISCORD_EMAIL_LOG_WEBHOOK
-    else:
-        category_webhook = settings.DISCORD_AUDIT_LOG_WEBHOOK
-    webhook_url = category_webhook
+    """Post public beatmap events publicly and all other audit events privately."""
+    webhook_url = (
+        settings.DISCORD_PUBLIC_LOG_WEBHOOK
+        if category == "beatmap_public"
+        else settings.DISCORD_PRIVATE_LOG_WEBHOOK
+    )
     if not webhook_url:
         return
 
