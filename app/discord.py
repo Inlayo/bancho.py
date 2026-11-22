@@ -31,10 +31,6 @@ def _redact_audit_value(name: str, value: str) -> str:
         return ""
     if name.casefold() == "email_body":
         return value
-    if name.casefold() == "recipient" and "@" in value:
-        local_part, _, domain = value.rpartition("@")
-        value = f"{local_part[:1]}***@{domain}"
-
     value = _SECRET_QUERY_PARAM.sub(r"\1[REDACTED]", value)
     value = _EMAIL_QUERY_PARAM.sub(r"\1[REDACTED]", value)
     return value

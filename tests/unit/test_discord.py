@@ -127,7 +127,7 @@ def test_format_audit_event_preserves_email_body_including_tokens() -> None:
     )
 
     assert [(field.name, field.value) for field in embed.fields] == [
-        ("Recipient", "p***@example.com"),
+        ("Recipient", "player@example.com"),
         ("Email Subject", "Verify your email address"),
         (
             "Email Body",
