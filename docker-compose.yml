@@ -3,6 +3,7 @@ services:
 
   mysql:
     image: mysql:9.7.1
+    restart: unless-stopped
     ports:
       - ${DB_PORT}:${DB_PORT}
     environment:
@@ -23,6 +24,7 @@ services:
 
   redis:
     image: redis:8.8.0
+    restart: unless-stopped
     # ports:
     #   - ${REDIS_PORT}:${REDIS_PORT}
     user: root
@@ -45,6 +47,7 @@ services:
   bancho:
     # we also have a public image: ghcr.io/osuakatsuki/bancho.py:latest
     image: bancho:latest
+    restart: unless-stopped
     ports:
       - ${APP_PORT}:${APP_PORT}
     depends_on:
